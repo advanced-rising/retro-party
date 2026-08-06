@@ -1,0 +1,12 @@
+{
+  "name": "@retro/game-geuhae",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@retro/types": "workspace:*",
+    "@retro/room-kit": "workspace:*"
+  },
+  "scripts": { "typecheck": "tsc --build" }
+}

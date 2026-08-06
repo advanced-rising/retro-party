@@ -6,9 +6,43 @@
     "composite": true,
     "types": [
       "node"
-    ]
+    ],
+    "paths": {
+      "@retro/types": [
+        "../packages/types/src/index.ts"
+      ],
+      "@retro/room-kit": [
+        "../packages/room-kit/src/index.ts"
+      ],
+      "@retro/game-chosung": [
+        "../packages/games/chosung/src/index.ts"
+      ],
+      "@retro/game-geuhae": [
+        "../packages/games/geuhae/src/index.ts"
+      ],
+      "@retro/game-assoc": [
+        "../packages/games/assoc/src/index.ts"
+      ]
+    }
   },
   "include": [
     "*.ts"
+  ],
+  "references": [
+    {
+      "path": "../packages/types"
+    },
+    {
+      "path": "../packages/room-kit"
+    },
+    {
+      "path": "../packages/games/chosung"
+    },
+    {
+      "path": "../packages/games/geuhae"
+    },
+    {
+      "path": "../packages/games/assoc"
+    }
   ]
 }

@@ -7,7 +7,9 @@
   "dependencies": {
     "@retro/types": "workspace:*",
     "@retro/room-kit": "workspace:*",
-    "@retro/game-chosung": "workspace:*"
+    "@retro/game-chosung": "workspace:*",
+    "@retro/game-geuhae": "workspace:*",
+    "@retro/game-assoc": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",

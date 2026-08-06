@@ -11,6 +11,12 @@
       "path": "./packages/games/chosung"
     },
     {
+      "path": "./packages/games/assoc"
+    },
+    {
+      "path": "./packages/games/geuhae"
+    },
+    {
       "path": "./apps/api"
     },
     {

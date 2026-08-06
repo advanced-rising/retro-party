@@ -12,8 +12,17 @@ import {
   type ServerMessage,
   type TeamId,
 } from '@retro/types'
-import { createEngine, shouldDeliver, type Effect, type Engine } from '@retro/room-kit'
-import { resolveGame, DEFAULT_GAME_ID, type AnyGame } from './registry.ts'
+import { createEngine, normalizeRoomTitle, shouldDeliver, type Effect, type Engine } from '@retro/room-kit'
+import {
+  hashPassword,
+  newTicket,
+  normalizePassword,
+  pruneTickets,
+  TICKET_TTL_MS,
+  verifyPassword,
+  type PasswordHash,
+} from './auth.ts'
+import { resolveGame, DEFAULT_GAME_ID, isKnownGame, type AnyGame } from './registry.ts'
 
 /**
  * RoomDO — 방 하나가 인스턴스 하나. 05 문서 §3
@@ -40,9 +49,14 @@ interface PersistedRoom {
   readonly settings: RoomSettings
   readonly participants: readonly Participant[]
   readonly scores: readonly (readonly [string, number])[]
+  /** 비밀번호가 걸려 있는지 여부만. 해시는 별도 키에 둔다 */
+  readonly locked: boolean
 }
 
 const STORAGE_KEY = 'room'
+/** 비밀번호 해시는 방 상태와 분리된 키에 둔다. 실수로 브로드캐스트되지 않게 */
+const AUTH_KEY = 'auth'
+const TICKET_KEY = 'tickets'
 
 export class RoomDO implements DurableObject {
   private engine: Engine<unknown, unknown> | null = null
@@ -61,12 +75,13 @@ export class RoomDO implements DurableObject {
     if (this.engine !== null) return this.engine
 
     const saved = await this.ctx.storage.get<PersistedRoom>(STORAGE_KEY)
-    const settings = saved?.settings ?? {
+    const settings: RoomSettings = saved?.settings ?? {
       gameId: DEFAULT_GAME_ID,
-      mode: 'casual' as const,
+      mode: 'casual',
       rounds: 5,
       teamSize: null,
       isPublic: true,
+      title: '새 방',
     }
     this.game = resolveGame(settings.gameId)
 
@@ -92,6 +107,7 @@ export class RoomDO implements DurableObject {
       scores: new Map(
         (saved?.scores ?? []).map(([id, v]) => [asPlayerId(id), v] as const),
       ),
+      locked: saved?.locked ?? false,
     }
 
     this.engine = createEngine({
@@ -114,6 +130,7 @@ export class RoomDO implements DurableObject {
       settings: room.settings,
       participants: room.participants,
       scores: [...room.scores].map(([id, v]) => [id as string, v] as const),
+      locked: room.locked,
     }
     await this.ctx.storage.put(STORAGE_KEY, data)
   }
@@ -123,15 +140,29 @@ export class RoomDO implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
 
+    // 방 생성 — 제목·게임·비밀번호를 여기서 정한다
+    if (url.pathname.endsWith('/create') && request.method === 'POST') {
+      return this.create(request, url.searchParams.get('code') ?? '')
+    }
+
+    // 비밀번호를 확인하고 짧게 사는 티켓을 내준다.
+    // 비밀번호가 쿼리스트링에 실리지 않게 하는 유일한 방법이다
+    if (url.pathname.endsWith('/ticket') && request.method === 'POST') {
+      return this.issueTicket(request, url.searchParams.get('code') ?? '')
+    }
+
     if (url.pathname.endsWith('/state')) {
       const engine = await this.boot(url.searchParams.get('code') ?? '')
       const { room } = engine.state
       return Response.json({
         code: room.code,
+        title: room.settings.title,
         phase: room.phase.kind,
         players: room.participants.filter((p) => p.connected).length,
         capacity: ROOM_CAPACITY,
         gameId: room.settings.gameId,
+        mode: room.settings.mode,
+        locked: room.locked,
       })
     }
 
@@ -147,6 +178,11 @@ export class RoomDO implements DurableObject {
     }
 
     const engine = await this.boot(code)
+
+    // 잠긴 방은 티켓이 있어야 들어온다
+    if (engine.state.room.locked && !(await this.consumeTicket(url.searchParams.get('ticket')))) {
+      return new Response('비밀번호가 필요합니다', { status: 403 })
+    }
 
     const pair = new WebSocketPair()
     const [client, server] = [pair[0], pair[1]]
@@ -170,6 +206,120 @@ export class RoomDO implements DurableObject {
     await this.dispatch(engine.join({ participant, nowMs: Date.now() }))
 
     return new Response(null, { status: 101, webSocket: client })
+  }
+
+  /** 방을 만든다. 이미 만들어진 방이면 아무것도 하지 않는다 */
+  private async create(request: Request, code: string): Promise<Response> {
+    const engine = await this.boot(code)
+    if (engine.state.room.participants.length > 0) {
+      return Response.json({ error: '이미 사용 중인 방입니다' }, { status: 409 })
+    }
+
+    const body: unknown = await request.json().catch(() => null)
+    const input = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+
+    const rawTitle = typeof input['title'] === 'string' ? input['title'] : ''
+    const title = normalizeRoomTitle(rawTitle) ?? '새 방'
+    const gameId =
+      typeof input['gameId'] === 'string' && isKnownGame(input['gameId'])
+        ? (input['gameId'] as RoomSettings['gameId'])
+        : DEFAULT_GAME_ID
+    const mode = parseMode(input['mode'])
+    const rounds = clampRounds(input['rounds'])
+    const isPublic = input['isPublic'] !== false
+
+    const password = normalizePassword(input['password'])
+    if (password !== null) {
+      await this.ctx.storage.put<PasswordHash>(AUTH_KEY, await hashPassword(password))
+    }
+
+    engine.settingsUnchecked({ gameId, mode, rounds, isPublic, title })
+    engine.setLocked(password !== null)
+    await this.persist()
+
+    // ★ 엔진은 생성 시점의 게임 모듈을 붙들고 있다.
+    //   설정만 바꾸면 고른 게임이 아니라 기본 게임이 계속 돈다. 반드시 다시 만든다
+    await this.rebuildEngine()
+    await this.reportToLobby()
+    return Response.json({ code: engine.state.room.code, title, gameId, locked: password !== null })
+  }
+
+  /**
+   * 게임이 바뀌면 엔진을 다시 만든다.
+   *
+   * `createEngine` 은 게임 모듈을 클로저에 가둔다. 그래서 settings.gameId 만
+   * 갈아끼우면 화면에는 새 게임 이름이 뜨는데 실제로는 옛 게임이 돈다.
+   * 로비에서만 호출한다 — 진행 중에 바꾸면 라운드가 깨진다.
+   */
+  private async rebuildEngine(): Promise<void> {
+    this.engine = null
+    this.booted = false
+    await this.boot('')
+  }
+
+  private async issueTicket(request: Request, code: string): Promise<Response> {
+    const engine = await this.boot(code)
+    if (!engine.state.room.locked) return Response.json({ ticket: null })
+
+    const body: unknown = await request.json().catch(() => null)
+    const attempt = normalizePassword(
+      typeof body === 'object' && body !== null
+        ? (body as Record<string, unknown>)['password']
+        : null,
+    )
+    const stored = await this.ctx.storage.get<PasswordHash>(AUTH_KEY)
+    if (attempt === null || stored === undefined || !(await verifyPassword(stored, attempt))) {
+      return Response.json({ error: '비밀번호가 다릅니다' }, { status: 403 })
+    }
+
+    const nowMs = Date.now()
+    const saved = (await this.ctx.storage.get<[string, number][]>(TICKET_KEY)) ?? []
+    const tickets = pruneTickets(new Map(saved), nowMs)
+    const ticket = newTicket()
+    tickets.set(ticket, nowMs + TICKET_TTL_MS)
+    await this.ctx.storage.put(TICKET_KEY, [...tickets])
+
+    return Response.json({ ticket })
+  }
+
+  /** 티켓은 한 번 쓰면 버린다 */
+  private async consumeTicket(ticket: string | null): Promise<boolean> {
+    if (ticket === null || ticket.length === 0) return false
+    const nowMs = Date.now()
+    const saved = (await this.ctx.storage.get<[string, number][]>(TICKET_KEY)) ?? []
+    const tickets = pruneTickets(new Map(saved), nowMs)
+    if (!tickets.has(ticket)) return false
+    tickets.delete(ticket)
+    await this.ctx.storage.put(TICKET_KEY, [...tickets])
+    return true
+  }
+
+  /** 방 목록에 자기 상태를 알린다. 실패해도 게임은 계속 돌아야 한다 */
+  private async reportToLobby(): Promise<void> {
+    const engine = this.engine
+    if (engine === null) return
+    const { room } = engine.state
+    if (!room.settings.isPublic || room.settings.mode === 'solo') return
+
+    const summary = {
+      code: room.code,
+      title: room.settings.title,
+      gameId: room.settings.gameId,
+      mode: room.settings.mode,
+      players: room.participants.filter((p) => p.connected).length,
+      capacity: ROOM_CAPACITY,
+      phase: room.phase.kind,
+      locked: room.locked,
+    }
+    try {
+      const stub = this.env.LOBBY.get(this.env.LOBBY.idFromName('global'))
+      await stub.fetch('https://lobby/report', {
+        method: 'POST',
+        body: JSON.stringify(summary),
+      })
+    } catch {
+      // 목록이 잠깐 낡는 것은 감수한다. 방이 멈추면 안 된다
+    }
   }
 
   // ── WebSocket ──────────────────────────────────────
@@ -210,8 +360,24 @@ export class RoomDO implements DurableObject {
         return this.dispatch(engine.start(playerId, nowMs))
       case 'again':
         return this.dispatch(engine.again(playerId, nowMs))
-      case 'settings':
-        return this.dispatch(engine.settings(playerId, message.patch, nowMs))
+      case 'settings': {
+        const before = engine.state.room.settings.gameId
+        const effects = engine.settings(playerId, message.patch, nowMs)
+        await this.dispatch(effects)
+
+        // 게임을 갈아탔으면 엔진을 다시 세우고 모두에게 새 스냅샷을 보낸다
+        if (this.engine !== null && this.engine.state.room.settings.gameId !== before) {
+          await this.rebuildEngine()
+          const rebuilt = this.engine
+          if (rebuilt !== null) {
+            for (const socket of this.ctx.getWebSockets()) {
+              const who = this.attachmentOf(socket)
+              if (who !== null) this.send(socket, rebuilt.snapshotFor(asPlayerId(who.playerId)))
+            }
+          }
+        }
+        return
+      }
       case 'kick':
         // Phase 0.5 미구현. 방장 권한 검증부터 필요하다
         return
@@ -276,6 +442,7 @@ export class RoomDO implements DurableObject {
 
     if (nextAlarmMs !== null) await this.ctx.storage.setAlarm(nextAlarmMs)
     await this.persist()
+    await this.reportToLobby()
   }
 
   private teamOf(playerId: PlayerId): TeamId | null {
@@ -316,6 +483,15 @@ export class RoomDO implements DurableObject {
   private sendToPlayer(playerId: PlayerId, message: ServerMessage): void {
     for (const ws of this.ctx.getWebSockets(playerId)) this.send(ws, message)
   }
+}
+
+function parseMode(raw: unknown): RoomSettings['mode'] {
+  return raw === 'team' || raw === 'solo' || raw === 'rank' ? raw : 'casual'
+}
+
+function clampRounds(raw: unknown): number {
+  const n = typeof raw === 'number' ? Math.round(raw) : 5
+  return Math.min(20, Math.max(1, Number.isFinite(n) ? n : 5))
 }
 
 const AVATARS = [

@@ -72,10 +72,11 @@ function makeRoom(hostId: string, mode: RoomMode, rounds: number): RoomState {
     code: 'ABCDEF' as RoomCode,
     seed: asSeed('seed-room-1'),
     hostId: asPlayerId(hostId),
-    settings: { gameId: fakeGame.id, mode, rounds, teamSize: null, isPublic: true },
+    settings: { gameId: fakeGame.id, mode, rounds, teamSize: null, isPublic: true, title: '테스트 방' },
     phase: { kind: 'lobby' },
     participants: [],
     scores: new Map(),
+    locked: false,
   }
 }
 

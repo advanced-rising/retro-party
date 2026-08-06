@@ -15,19 +15,6 @@ import {
  * 여기 있는 것은 소켓을 열고, 끊기면 다시 붙고, 리듀서에 넘기는 배선뿐이다.
  */
 
-export interface ChosungBoard {
-  readonly chosung: string
-  readonly length: number
-  readonly category: string
-  readonly hint: string | null
-  readonly firstVowel: string | null
-  readonly solvedCount: number
-  readonly youSolved: boolean
-}
-
-export const isChosungBoard = (board: unknown): board is ChosungBoard =>
-  typeof board === 'object' && board !== null && 'chosung' in board
-
 export interface RoomView extends ClientState {
   readonly connected: boolean
 }
@@ -52,6 +39,8 @@ export function useRoomSocket(
   code: string,
   playerId: string,
   nickname: string,
+  /** 잠긴 방의 1회용 티켓. 비밀번호 원문은 절대 여기 오지 않는다 */
+  ticket: string | null = null,
 ): readonly [RoomView, RoomActions] {
   const socketRef = useRef<WebSocket | null>(null)
   const [connected, setConnected] = useState(false)
@@ -61,7 +50,9 @@ export function useRoomSocket(
     if (code.length === 0 || playerId.length === 0) return
 
     const base = apiBase.replace(/^http/, 'ws')
-    const url = `${base}/api/rooms/${code}/ws?playerId=${encodeURIComponent(playerId)}&nickname=${encodeURIComponent(nickname)}`
+    const query = new URLSearchParams({ playerId, nickname })
+    if (ticket !== null) query.set('ticket', ticket)
+    const url = `${base}/api/rooms/${code}/ws?${query.toString()}`
 
     let closedByUs = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
@@ -98,7 +89,7 @@ export function useRoomSocket(
       socketRef.current?.close()
       socketRef.current = null
     }
-  }, [apiBase, code, playerId, nickname])
+  }, [apiBase, code, playerId, nickname, ticket])
 
   const emit = useCallback((payload: unknown): void => {
     const socket = socketRef.current

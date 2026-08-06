@@ -39,7 +39,14 @@ const fold = (messages: readonly ServerMessage[], from = initialClientState()): 
 const snapshot: ServerMessage = {
   type: 'snapshot',
   phase: { kind: 'lobby' },
-  settings: { gameId: asGameId('chosung'), mode: 'casual', rounds: 3, teamSize: null, isPublic: true },
+  settings: {
+    gameId: asGameId('chosung'),
+    mode: 'casual',
+    rounds: 3,
+    teamSize: null,
+    isPublic: true,
+    title: '테스트 방',
+  },
   participants: [player('a'), player('b')],
   scores: [
     [P('a'), 0],

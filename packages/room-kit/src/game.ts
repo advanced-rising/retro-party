@@ -19,7 +19,29 @@ export interface RoomGame<Question, View> {
   reveal(question: Question): RevealData
   /** ★ 참가자별 뷰. 정답 누출을 막는 유일한 통로 */
   viewFor(input: ViewInput<Question>): View
+
+  /**
+   * 이 사람이 이번 라운드에 쓸 수 없는 말 (단어 연상의 출제자) — 02 문서 §3.4
+   *
+   * **사람마다 다르다.** 출제자는 정답을 말하면 안 되지만, 맞히는 사람은
+   * 정답을 쳐야 이긴다. 전원에게 같은 금칙어를 걸면 게임이 성립하지 않는다.
+   */
+  blockedWordsFor?(input: BlockedWordsInput<Question>): readonly string[]
+
+  /**
+   * 라운드가 끝날 때 얹는 점수 (단어 연상의 출제자 보너스) — 02 문서 §3.5
+   * 맞힌 사람 수에 연동되므로 라운드가 끝나야 계산할 수 있다.
+   */
+  roundEndBonus?(question: Question, round: RoundState): readonly ScoreDelta[]
 }
+
+export interface BlockedWordsInput<Question> {
+  readonly question: Question
+  readonly round: RoundState
+  readonly playerId: PlayerId
+}
+
+export type ScoreDelta = readonly [PlayerId, number]
 
 export interface GameMeta {
   readonly name: string
@@ -67,6 +89,8 @@ export interface RoundState {
   readonly endsAtMs: number
   /** 이미 맞힌 참가자. 순서가 곧 순위 */
   readonly solved: readonly PlayerId[]
+  /** 부분 점수를 이미 받은 참가자. 「그 해」의 ±1년은 1회만 — 02 문서 §1.3 */
+  readonly partials: readonly PlayerId[]
   readonly presenter: PlayerId | null
   /** 맞힐 수 있는 참가자 수 (출제자 제외). 전원 정답 시 조기 종료 판정에 쓴다 */
   readonly expectedSolvers: number
@@ -100,6 +124,7 @@ export function emptyRound(input: EmptyRoundInput): RoundState {
     startedAtMs: input.startedAtMs,
     endsAtMs: input.startedAtMs + input.roundMs,
     solved: [],
+    partials: [],
     presenter: input.presenter,
     expectedSolvers: input.expectedSolvers,
   }

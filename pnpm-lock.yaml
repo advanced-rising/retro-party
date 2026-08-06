@@ -8,6 +8,21 @@ importers:
 
   .:
     devDependencies:
+      '@retro/game-assoc':
+        specifier: workspace:*
+        version: link:packages/games/assoc
+      '@retro/game-chosung':
+        specifier: workspace:*
+        version: link:packages/games/chosung
+      '@retro/game-geuhae':
+        specifier: workspace:*
+        version: link:packages/games/geuhae
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:packages/room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:packages/types
       '@types/node':
         specifier: '22'
         version: 22.20.1
@@ -17,9 +32,15 @@ importers:
 
   apps/api:
     dependencies:
+      '@retro/game-assoc':
+        specifier: workspace:*
+        version: link:../../packages/games/assoc
       '@retro/game-chosung':
         specifier: workspace:*
         version: link:../../packages/games/chosung
+      '@retro/game-geuhae':
+        specifier: workspace:*
+        version: link:../../packages/games/geuhae
       '@retro/room-kit':
         specifier: workspace:*
         version: link:../../packages/room-kit
@@ -68,7 +89,25 @@ importers:
         specifier: ^4.0.0
         version: 4.3.3
 
+  packages/games/assoc:
+    dependencies:
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:../../room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:../../types
+
   packages/games/chosung:
+    dependencies:
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:../../room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:../../types
+
+  packages/games/geuhae:
     dependencies:
       '@retro/room-kit':
         specifier: workspace:*

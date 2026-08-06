@@ -1,12 +1,14 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
-import { Copy, Users, WifiOff } from 'lucide-react'
-import { ROOM_CAPACITY } from '@retro/types'
+import { use, useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Copy, Lock, Users, WifiOff } from 'lucide-react'
+import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
+import { InAppBanner } from '@/components/InAppBanner'
 import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
+import { fetchRoomState, requestTicket } from '@/lib/api'
 import { API_BASE, loadIdentity } from '@/lib/identity'
 import { useRoomSocket } from '@/lib/room-socket'
 
@@ -17,56 +19,147 @@ import { useRoomSocket } from '@/lib/room-socket'
  * 언제나 화면 아래에 붙어 있어야 한다 (dvh + flex 로 잡는다).
  */
 export default function RoomPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = use(params)
+  const { code: raw } = use(params)
+  const code = raw.toUpperCase()
+
   const [identity, setIdentity] = useState<{ playerId: string; nickname: string } | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [locked, setLocked] = useState<boolean | null>(null)
+  const [ticket, setTicket] = useState<string | null>(null)
 
   useEffect(() => {
     setIdentity(loadIdentity())
-  }, [])
+    void fetchRoomState(code)
+      .then((state) => setLocked(state?.locked ?? false))
+      .catch(() => setLocked(false))
+  }, [code])
 
-  if (identity === null) return <Splash />
+  if (identity === null || locked === null) return <Splash />
+
+  // 잠긴 방은 티켓을 받아야 소켓을 연다. 비밀번호는 URL 에 실리지 않는다
+  if (locked && ticket === null) {
+    return <PasswordGate code={code} onTicket={setTicket} />
+  }
+
+  return <Room code={code} identity={identity} ticket={ticket} />
+}
+
+function PasswordGate({
+  code,
+  onTicket,
+}: {
+  code: string
+  onTicket: (ticket: string) => void
+}) {
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(event: FormEvent): Promise<void> {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const issued = await requestTicket(code, password)
+      if (issued === null) throw new Error('입장할 수 없습니다')
+      onTicket(issued)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '비밀번호가 다릅니다')
+      setBusy(false)
+    }
+  }
 
   return (
-    <Room
-      code={code.toUpperCase()}
-      playerId={identity.playerId}
-      nickname={identity.nickname}
-      copied={copied}
-      onCopy={() => {
-        void navigator.clipboard.writeText(window.location.href)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1_600)
-      }}
-    />
+    <main className="mx-auto flex h-dvh max-w-sm flex-col justify-center gap-4 px-5">
+      <InAppBanner />
+      <h1
+        className="flex items-center gap-2 text-lg font-bold"
+        style={{ color: 'var(--text-hi)' }}
+      >
+        <Lock size={16} color="var(--amber)" aria-hidden />
+        비밀번호가 걸린 방입니다
+      </h1>
+
+      <form onSubmit={(e) => void submit(e)} className="space-y-3">
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          type="password"
+          maxLength={20}
+          autoFocus
+          autoComplete="off"
+          aria-label="방 비밀번호"
+          className="w-full rounded-lg border px-3 py-2.5 text-base outline-none"
+          style={{ background: 'var(--bg-surface)', color: 'var(--text-hi)' }}
+        />
+        <button
+          type="submit"
+          disabled={busy || password.trim().length === 0}
+          className="w-full rounded-xl py-3 text-base font-bold disabled:opacity-50"
+          style={{ background: 'var(--lime)', color: 'var(--on-lime)' }}
+        >
+          들어가기
+        </button>
+      </form>
+
+      {error !== null && (
+        <p className="text-sm" style={{ color: 'var(--red)' }} role="alert">
+          {error}
+        </p>
+      )}
+    </main>
   )
 }
 
 function Room({
   code,
-  playerId,
-  nickname,
-  copied,
-  onCopy,
+  identity,
+  ticket,
 }: {
   code: string
-  playerId: string
-  nickname: string
-  copied: boolean
-  onCopy: () => void
+  identity: { playerId: string; nickname: string }
+  ticket: string | null
 }) {
-  const [view, actions] = useRoomSocket(API_BASE, code, playerId, nickname)
+  const [view, actions] = useRoomSocket(
+    API_BASE,
+    code,
+    identity.playerId,
+    identity.nickname,
+    ticket,
+  )
+  const [copied, setCopied] = useState(false)
+
+  const copy = useCallback(() => {
+    void navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1_600)
+  }, [])
+
   const isHost = view.you !== null && view.you === view.hostId
   const teamMode = view.settings?.mode === 'team'
-  const playing = view.phase.kind === 'playing'
+  const solo = view.settings?.mode === 'solo'
   const here = view.participants.filter((p) => p.connected).length
+  const needed = solo ? 1 : 2
+  const roundMs = view.settings?.gameId === 'geuhae' ? 60_000 : view.settings?.gameId === 'assoc' ? 90_000 : 20_000
+
+  // 단어 연상에서 지금 설명하는 사람
+  const presenterId: PlayerId | null =
+    typeof view.board === 'object' &&
+    view.board !== null &&
+    'presenter' in view.board &&
+    typeof (view.board as { presenter?: unknown }).presenter === 'string'
+      ? asPlayerId((view.board as { presenter: string }).presenter)
+      : null
+  const presenterName =
+    view.participants.find((p) => p.playerId === presenterId)?.nickname ?? '출제자'
 
   return (
     <main className="mx-auto flex h-dvh max-w-lg flex-col px-4 pb-2 pt-3">
-      <header className="flex items-center gap-3 pb-3">
+      <InAppBanner />
+
+      <header className="flex items-center gap-2 pb-3">
         <button
           type="button"
-          onClick={onCopy}
+          onClick={copy}
           className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-bold tracking-[0.15em]"
           style={{ background: 'var(--bg-elevated)', color: 'var(--text-hi)' }}
           aria-label="방 링크 복사"
@@ -74,27 +167,39 @@ function Room({
           {code}
           <Copy size={13} aria-hidden />
         </button>
-        {copied && (
-          <span className="text-xs" style={{ color: 'var(--lime)' }} role="status">
-            링크 복사됨
-          </span>
-        )}
 
-        <span className="ml-auto flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-lo)' }}>
-          {view.connected ? <Users size={14} aria-hidden /> : <WifiOff size={14} color="var(--amber)" aria-hidden />}
+        <span className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--text-lo)' }}>
+          {copied ? (
+            <span style={{ color: 'var(--lime)' }} role="status">
+              링크 복사됨
+            </span>
+          ) : (
+            (view.settings?.title ?? '')
+          )}
+        </span>
+
+        <span
+          className="flex shrink-0 items-center gap-1.5 text-sm"
+          style={{ color: 'var(--text-lo)' }}
+        >
+          {view.connected ? (
+            <Users size={14} aria-hidden />
+          ) : (
+            <WifiOff size={14} color="var(--amber)" aria-hidden />
+          )}
           <span className="tnum">
             {here}/{ROOM_CAPACITY}
           </span>
         </span>
       </header>
 
-      {playing && (
+      {view.phase.kind === 'playing' && (
         <div className="pb-3">
-          <Timer endsAtMs={view.phase.endsAtMs} totalMs={20_000} />
+          <Timer endsAtMs={view.phase.endsAtMs} totalMs={roundMs} />
         </div>
       )}
 
-      <Board board={view.board} phase={view.phase} />
+      <Board board={view.board} phase={view.phase} presenterName={presenterName} />
 
       <div className="py-3">
         <Roster
@@ -102,6 +207,7 @@ function Room({
           scores={view.scores}
           hostId={view.hostId}
           you={view.you}
+          presenter={presenterId}
         />
       </div>
 
@@ -110,14 +216,14 @@ function Room({
           <button
             type="button"
             onClick={view.phase.kind === 'result' ? actions.again : actions.start}
-            disabled={!isHost || here < 2}
+            disabled={!isHost || here < needed}
             className="flex-1 rounded-xl py-3 text-base font-bold disabled:opacity-40"
             style={{ background: 'var(--lime)', color: 'var(--on-lime)' }}
           >
             {view.phase.kind === 'result' ? '한 판 더' : '시작'}
           </button>
 
-          {isHost && view.phase.kind === 'lobby' && (
+          {isHost && view.phase.kind === 'lobby' && !solo && (
             <button
               type="button"
               onClick={() => actions.patchSettings({ mode: teamMode ? 'casual' : 'team' })}
@@ -136,9 +242,9 @@ function Room({
         </p>
       )}
 
-      {here < 2 && view.phase.kind === 'lobby' && (
+      {here < needed && view.phase.kind === 'lobby' && (
         <p className="pb-3 text-center text-sm" style={{ color: 'var(--text-lo)' }}>
-          링크를 보내면 2명부터 바로 시작할 수 있습니다
+          방 코드를 보내면 {needed}명부터 바로 시작할 수 있습니다
         </p>
       )}
 

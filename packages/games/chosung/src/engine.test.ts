@@ -44,10 +44,18 @@ function makeEngine(names: readonly string[] = ['a', 'b']): Engine<ChosungQuesti
     code: 'RETRO2' as RoomCode,
     seed: asSeed('seed-chosung'),
     hostId: P(names[0] ?? 'a'),
-    settings: { gameId: chosungGame.id, mode: 'casual', rounds: 2, teamSize: null, isPublic: true },
+    settings: {
+      gameId: chosungGame.id,
+      mode: 'casual',
+      rounds: 2,
+      teamSize: null,
+      isPublic: true,
+      title: '초성 테스트',
+    },
     phase: { kind: 'lobby' },
     participants: [],
     scores: new Map(),
+    locked: false,
   }
   const engine = createEngine({ game: chosungGame, room, pool: POOL })
   for (const n of names) engine.join({ participant: player(n), nowMs: 0 })

@@ -6,7 +6,16 @@ export const ROOM_CAPACITY = 8 as const
 /** 이 인원이 모이면 시작할 수 있다. 채팅 게임은 둘이면 성립한다 — 03 문서 §2 */
 export const MIN_PLAYERS_TO_START = 2
 
-export type RoomMode = 'casual' | 'team' | 'rank'
+/**
+ * solo — 혼자 모드. 본진이 아니라 대기실이다 (03 문서 §7).
+ * 사람이 없는 시간에 온 사람을 그냥 보내지 않는 것이 목적이고,
+ * 규칙을 여기서 배우고 방으로 넘어간다.
+ */
+export type RoomMode = 'casual' | 'team' | 'rank' | 'solo'
+
+export function minPlayersFor(mode: RoomMode): number {
+  return mode === 'solo' ? 1 : MIN_PLAYERS_TO_START
+}
 
 /** 팀 편성. 인원이 모자라면 축소된다 — 01 문서 §6.5.1 */
 export type TeamSize = 2 | 3 | 4
@@ -35,12 +44,17 @@ export interface Participant {
   readonly benched: boolean
 }
 
+/** 방 제목. 목록에 그대로 노출되므로 길이를 제한하고 정규화한다 */
+export const MAX_ROOM_TITLE = 20
+
 export interface RoomSettings {
   readonly gameId: GameId
   readonly mode: RoomMode
   readonly rounds: number
   readonly teamSize: TeamSize | null // mode === 'team' 일 때만
+  /** 방 목록에 띄울지. 끄면 코드로만 들어온다 */
   readonly isPublic: boolean
+  readonly title: string
 }
 
 export interface RoomState {
@@ -52,6 +66,12 @@ export interface RoomState {
   readonly phase: RoomPhase
   readonly participants: readonly Participant[]
   readonly scores: ReadonlyMap<PlayerId, number>
+  /**
+   * 비밀번호가 걸려 있는가. **비밀번호 자체는 여기 없다.**
+   * 방 상태는 전원에게 브로드캐스트되므로, 원문도 해시도 절대 들어오면 안 된다.
+   * 실제 검증은 RoomDO 가 storage 에 둔 해시로만 한다.
+   */
+  readonly locked: boolean
 }
 
 export function isTeamMode(state: RoomState): boolean {

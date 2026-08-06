@@ -39,8 +39,15 @@ function check(ok: boolean, label: string, detail = ''): void {
   if (!ok) failures.push(label)
 }
 
-async function connect(code: string, playerId: string, nickname: string): Promise<Client> {
-  const url = `${WS_BASE}/api/rooms/${code}/ws?playerId=${playerId}&nickname=${encodeURIComponent(nickname)}`
+async function connect(
+  code: string,
+  playerId: string,
+  nickname: string,
+  ticket: string | null = null,
+): Promise<Client> {
+  const query = new URLSearchParams({ playerId, nickname })
+  if (ticket !== null) query.set('ticket', ticket)
+  const url = `${WS_BASE}/api/rooms/${code}/ws?${query.toString()}`
   const socket = new WebSocket(url)
   const client: Client = {
     playerId,
@@ -96,11 +103,66 @@ function percentile(values: readonly number[], p: number): number {
   return sorted[index] ?? Number.NaN
 }
 
-async function newRoom(): Promise<string> {
-  const response = await fetch(`${BASE}/api/rooms`, { method: 'POST' })
+interface NewRoomInput {
+  readonly title?: string
+  readonly gameId?: string
+  readonly mode?: string
+  readonly rounds?: number
+  readonly isPublic?: boolean
+  readonly password?: string
+}
+
+async function newRoom(input: NewRoomInput = {}): Promise<string> {
+  const response = await fetch(`${BASE}/api/rooms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: '검증용 방', rounds: 3, ...input }),
+  })
   const body = (await response.json()) as { code?: string }
   if (typeof body.code !== 'string') throw new Error('방 코드를 못 받았다')
   return body.code
+}
+
+interface ListedRoom {
+  readonly code: string
+  readonly title: string
+  readonly players: number
+  readonly locked: boolean
+  readonly gameId: string
+}
+
+async function listRooms(): Promise<readonly ListedRoom[]> {
+  const response = await fetch(`${BASE}/api/rooms`)
+  const body = (await response.json()) as { rooms?: ListedRoom[] }
+  return body.rooms ?? []
+}
+
+/** 소켓이 실제로 열리는지 본다. 열리면 바로 닫는다 */
+function canOpen(code: string, ticket: string | null): Promise<boolean> {
+  const query = new URLSearchParams({ playerId: 'probe', nickname: '탐침' })
+  if (ticket !== null) query.set('ticket', ticket)
+  const socket = new WebSocket(`${WS_BASE}/api/rooms/${code}/ws?${query.toString()}`)
+
+  return new Promise<boolean>((resolve) => {
+    const settle = (ok: boolean): void => {
+      socket.close()
+      resolve(ok)
+    }
+    socket.addEventListener('open', () => settle(true), { once: true })
+    socket.addEventListener('error', () => settle(false), { once: true })
+    socket.addEventListener('close', () => resolve(false), { once: true })
+  })
+}
+
+async function ticketFor(code: string, password: string): Promise<string | null> {
+  const response = await fetch(`${BASE}/api/rooms/${code}/ticket`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!response.ok) return null
+  const body = (await response.json()) as { ticket?: string | null }
+  return body.ticket ?? null
 }
 
 // ── 1 · 8명 동시 접속 ────────────────────────────────
@@ -286,6 +348,176 @@ async function gateTeamIsolation(): Promise<void> {
   for (const client of clients) client.socket.close()
 }
 
+// ── 5 · 게임 3종 ─────────────────────────────────────
+
+async function gateAllGames(): Promise<void> {
+  console.log('\n5. 게임 3종이 각각 돈다')
+
+  const response = await fetch(`${BASE}/api/games`)
+  const body = (await response.json()) as { games?: { id: string; name: string }[] }
+  const games = body.games ?? []
+  check(games.length >= 3, '게임이 3종 이상 등록됐다', games.map((g) => g.name).join(' · '))
+
+  // 게임마다 board 의 모양이 다르다. 여기를 확인하지 않으면
+  // "고른 게임과 실제 도는 게임이 다르다" 를 못 잡는다
+  const SHAPE: Readonly<Record<string, string>> = {
+    chosung: 'chosung',
+    geuhae: 'hints',
+    assoc: 'role',
+  }
+
+  for (const game of games) {
+    const code = await newRoom({ gameId: game.id, rounds: 2, title: `${game.name} 검증` })
+    const a = await connect(code, 'g0', '방장')
+    const b = await connect(code, 'g1', '둘째')
+    await sleep(300)
+    send(a, { type: 'start' })
+    await sleep(4_500)
+
+    const boards = seen(b, 'board')
+    const board = boards.at(-1)?.['view'] as Json | undefined
+    check(board !== undefined, `${game.name} — board 가 온다`)
+
+    const marker = SHAPE[game.id]
+    check(
+      marker !== undefined && board !== undefined && marker in board,
+      `${game.name} — ★ 고른 게임이 실제로 돈다`,
+      `기대 필드 ${marker} · 받은 필드 ${Object.keys(board ?? {}).join(',')}`,
+    )
+
+    // 어떤 게임이든 board 에 정답 필드가 있으면 안 된다.
+    // 단어 연상 출제자만 예외인데, 여기서는 b(맞히는 쪽) 를 본다
+    const leaked = boards.some((m) => {
+      const v = m['view'] as Json | undefined
+      return v !== undefined && ('word' in v || 'answers' in v || 'year' in v)
+    })
+    check(!leaked, `${game.name} — ★ 맞히는 사람 board 에 정답이 없다`)
+
+    a.socket.close()
+    b.socket.close()
+    await sleep(200)
+  }
+}
+
+// ── 6 · 방 목록 ──────────────────────────────────────
+
+async function gateRoomList(): Promise<void> {
+  console.log('\n6. 방 목록과 뭉치기 압력')
+
+  const emptyCode = await newRoom({ title: '빈 방' })
+  await sleep(400)
+  const withEmpty = await listRooms()
+  check(
+    !withEmpty.some((r) => r.code === emptyCode),
+    '★ 빈 방은 목록에 안 나온다',
+    '분산을 막는 규칙 (03 문서 §4.2)',
+  )
+
+  const liveCode = await newRoom({ title: '사람 있는 방' })
+  const a = await connect(liveCode, 'l0', '먼저온사람')
+  await sleep(600)
+
+  const listed = await listRooms()
+  const mine = listed.find((r) => r.code === liveCode)
+  check(mine !== undefined, '사람이 들어오면 목록에 뜬다')
+  check(mine?.title === '사람 있는 방', '방 제목이 그대로 나온다', mine?.title ?? '')
+  check(mine?.players === 1, '인원이 실제 접속자 수다', String(mine?.players))
+
+  // 비공개 방은 목록에 없다
+  const privateCode = await newRoom({ title: '비공개', isPublic: false })
+  const p = await connect(privateCode, 'l9', '비공개유저')
+  await sleep(600)
+  check(
+    !(await listRooms()).some((r) => r.code === privateCode),
+    '비공개 방은 목록에 안 나온다',
+  )
+  p.socket.close()
+
+  // 정렬 — 사람 많은 방이 위
+  const busyCode = await newRoom({ title: '사람 많은 방' })
+  const crowd = await Promise.all(
+    Array.from({ length: 3 }, (_, i) => connect(busyCode, `c${i}`, `사람${i}`)),
+  )
+  await sleep(700)
+  const sorted = await listRooms()
+  check(sorted[0]?.code === busyCode, '★ 사람 많은 방이 맨 위', sorted.map((r) => r.players).join('>'))
+
+  a.socket.close()
+  for (const client of crowd) client.socket.close()
+  await sleep(300)
+}
+
+// ── 7 · 비밀번호 ─────────────────────────────────────
+
+async function gatePassword(): Promise<void> {
+  console.log('\n7. 방 비밀번호')
+
+  const code = await newRoom({ title: '잠긴 방', password: 'hunter2' })
+  const state = await fetch(`${BASE}/api/rooms/${code}/state`).then((r) => r.json())
+  check((state as Json)['locked'] === true, '잠금 상태가 노출된다 (불리언만)')
+  check(
+    !JSON.stringify(state).includes('hunter2'),
+    '★ 상태 응답에 비밀번호가 없다',
+  )
+
+  check((await ticketFor(code, 'wrong')) === null, '틀린 비밀번호는 티켓을 못 받는다')
+
+  const ticket = await ticketFor(code, 'hunter2')
+  check(ticket !== null, '맞는 비밀번호는 티켓을 받는다')
+
+  // 티켓 없이 소켓을 열면 거절. node fetch 는 Upgrade 헤더를 막으므로 진짜 소켓으로 잰다
+  check(!(await canOpen(code, null)), '★ 티켓 없이는 소켓이 안 열린다')
+  check(!(await canOpen(code, 'made-up-ticket')), '★ 아무 티켓이나 통하지 않는다')
+
+  if (ticket !== null) {
+    const client = await connect(code, 'pw0', '입장자', ticket)
+    await sleep(400)
+    check(seen(client, 'snapshot').length > 0, '티켓이 있으면 들어간다')
+    check(
+      !JSON.stringify(client.inbox).includes('hunter2'),
+      '★ 어떤 서버 메시지에도 비밀번호가 없다',
+    )
+
+    // 티켓은 1회용
+    const reused = await ticketFor(code, 'hunter2')
+    check(reused !== ticket, '티켓은 매번 새로 발급된다')
+    client.socket.close()
+  }
+
+  // 잠긴 방은 [바로 참가] 대상이 아니다
+  const quick = await fetch(`${BASE}/api/rooms/quick`, { method: 'POST' })
+  const target = ((await quick.json()) as { code?: string | null }).code ?? null
+  check(target !== code, '잠긴 방은 바로 참가로 배정되지 않는다')
+}
+
+// ── 8 · 혼자 모드 ────────────────────────────────────
+
+async function gateSolo(): Promise<void> {
+  console.log('\n8. 혼자 모드')
+
+  const code = await newRoom({ gameId: 'assoc', mode: 'solo', rounds: 2, isPublic: false })
+  const alone = await connect(code, 's0', '혼자')
+  await sleep(300)
+
+  send(alone, { type: 'start' })
+  await sleep(4_500)
+
+  const phases = seen(alone, 'phase').map((m) => (m['phase'] as Json | undefined)?.['kind'])
+  check(phases.includes('playing'), '★ 혼자서도 시작된다')
+
+  const board = seen(alone, 'board').at(-1)?.['view'] as Json | undefined
+  check(board?.['role'] === 'guesser', '가짜 출제자를 세우지 않는다', String(board?.['role']))
+  check(board?.['presenter'] === null, 'presenter 가 null 이다')
+  const script = Array.isArray(board?.['script']) ? (board['script'] as string[]) : []
+  check(script.length > 0, '설명 스크립트가 문제의 일부로 열린다', `${script.length}단계`)
+  check(
+    !JSON.stringify(board).includes('word'),
+    '★ 혼자 모드 board 에도 정답이 없다',
+  )
+
+  alone.socket.close()
+}
+
 // ── 실행 ─────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -297,6 +529,10 @@ async function main(): Promise<void> {
 
   await gameRoundtrip()
   await gateTeamIsolation()
+  await gateAllGames()
+  await gateRoomList()
+  await gatePassword()
+  await gateSolo()
 
   console.log('')
   if (failures.length > 0) {
