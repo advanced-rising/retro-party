@@ -37,6 +37,15 @@ export interface ClientState {
   readonly lines: readonly ChatLine[]
   /** 판이 끝나면 채워진다. 진행 중에는 비어 있다 */
   readonly history: readonly RoundRecord[]
+  /** 이 라운드의 스킵 표 현황 */
+  readonly skip: { readonly votes: number; readonly needed: number; readonly you: boolean }
+  /** 이 라운드의 힌트 표 현황 */
+  readonly hint: {
+    readonly votes: number
+    readonly needed: number
+    readonly you: boolean
+    readonly available: boolean
+  }
   readonly error: string | null
 }
 
@@ -52,6 +61,8 @@ export function initialClientState(): ClientState {
     board: null,
     lines: [],
     history: [],
+    skip: { votes: 0, needed: 0, you: false },
+    hint: { votes: 0, needed: 0, you: false, available: true },
     error: null,
   }
 }
@@ -86,7 +97,16 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
       const stale = isRevealBoard(state.board) && message.phase.kind !== 'reveal'
       // 새 판이 시작되면 지난 기록도 치운다
       const history = message.phase.kind === 'countdown' ? [] : state.history
-      return { ...state, phase: message.phase, board: stale ? null : state.board, history }
+      // 라운드가 바뀌면 스킵 표도 초기화된다
+      const fresh = message.phase.kind === 'playing'
+      return {
+        ...state,
+        phase: message.phase,
+        board: stale ? null : state.board,
+        history,
+        skip: fresh ? { votes: 0, needed: 0, you: false } : state.skip,
+        hint: fresh ? { votes: 0, needed: 0, you: false, available: true } : state.hint,
+      }
     }
 
     case 'joined': {
@@ -120,6 +140,23 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
 
     case 'history':
       return { ...state, history: message.rounds }
+
+    case 'skip':
+      return {
+        ...state,
+        skip: { votes: message.votes, needed: message.needed, you: message.you },
+      }
+
+    case 'hint':
+      return {
+        ...state,
+        hint: {
+          votes: message.votes,
+          needed: message.needed,
+          you: message.you,
+          available: message.available,
+        },
+      }
 
     case 'chat':
       return { ...state, lines: [...state.lines, message.line].slice(-CHAT_BUFFER) }

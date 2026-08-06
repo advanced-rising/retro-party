@@ -165,6 +165,14 @@ export const assocGame: RoomGame<AssocQuestion, AssocView> = {
     return { answer: question.word, detail: { category: question.category } }
   },
 
+  /** 혼자 모드에서만 열 것이 있다. 사람 출제자가 있으면 그 사람 몫이다 */
+  nextRevealAtMs(question, round, nowMs): number | null {
+    if (question.presenter !== null) return null
+    const elapsed = nowMs - round.startedAtMs
+    const next = SCRIPT_AT_MS.find((at) => at > elapsed)
+    return next === undefined ? null : round.startedAtMs + next
+  },
+
   /** ★ 정답 누출 방지. 출제자 외에는 word 가 담기지 않는다 */
   viewFor(input: ViewInput<AssocQuestion>): AssocView {
     if (input.playerId === input.question.presenter) {

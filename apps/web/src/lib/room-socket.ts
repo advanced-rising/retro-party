@@ -24,6 +24,8 @@ export interface RoomActions {
   start(): void
   again(): void
   patchSettings(patch: Partial<RoomSettings>): void
+  skip(): void
+  hint(): void
 }
 
 const isServerMessage = (value: unknown): value is ServerMessage =>
@@ -103,10 +105,12 @@ export function useRoomSocket(
   )
   const start = useCallback(() => emit({ type: 'start' }), [emit])
   const again = useCallback(() => emit({ type: 'again' }), [emit])
+  const skip = useCallback(() => emit({ type: 'skip' }), [emit])
+  const hint = useCallback(() => emit({ type: 'hint' }), [emit])
   const patchSettings = useCallback(
     (patch: Partial<RoomSettings>) => emit({ type: 'settings', patch }),
     [emit],
   )
 
-  return [{ ...state, connected }, { send, start, again, patchSettings }] as const
+  return [{ ...state, connected }, { send, start, again, patchSettings, skip, hint }] as const
 }

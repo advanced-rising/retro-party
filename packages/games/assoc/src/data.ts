@@ -110,42 +110,6 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
     ],
   },
   {
-    word: '버스토큰',
-    topic: 'daily',
-    category: '90년대 물건',
-    aliases: [],
-    banned: [],
-    script: [
-      '동전처럼 생겼어요',
-      '버스 탈 때 통에 넣었죠',
-      '문방구에서도 팔았어요',
-    ],
-  },
-  {
-    word: '필름카메라',
-    topic: 'daily',
-    category: '90년대 물건',
-    aliases: [],
-    banned: [],
-    script: [
-      '찍고 바로 못 봐요',
-      '현상소에 맡겨야 했죠',
-      '한 통에 24장이나 36장이었어요',
-    ],
-  },
-  {
-    word: '보온도시락',
-    topic: 'daily',
-    category: '90년대 물건',
-    aliases: [],
-    banned: [],
-    script: [
-      '겨울에 유용했어요',
-      '점심시간까지 따뜻했죠',
-      '가방에서 국물이 새기도 했어요',
-    ],
-  },
-  {
     word: '오락실',
     topic: 'daily',
     category: '그때 그 장소',
@@ -218,18 +182,6 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
     ],
   },
   {
-    word: '독서실',
-    topic: 'daily',
-    category: '그때 그 장소',
-    aliases: [],
-    banned: [],
-    script: [
-      '조용히 해야 했어요',
-      '칸막이 책상에 앉았죠',
-      '월 단위로 자리를 빌렸어요',
-    ],
-  },
-  {
     word: '피시방',
     topic: 'daily',
     category: '그때 그 장소',
@@ -278,33 +230,9 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
     ],
   },
   {
-    word: '건빵',
-    topic: 'daily',
-    category: '그때 그 군것질',
-    aliases: [],
-    banned: [],
-    script: [
-      '딱딱한 과자예요',
-      '군대에서도 나왔죠',
-      '별 모양 사탕이 같이 들어 있었어요',
-    ],
-  },
-  {
-    word: '번데기',
-    topic: 'daily',
-    category: '그때 그 군것질',
-    aliases: [],
-    banned: [],
-    script: [
-      '길에서 종이컵에 담아 팔았어요',
-      '냄새가 멀리서도 났죠',
-      '이쑤시개로 찍어 먹었어요',
-    ],
-  },
-  {
     word: '노래방',
-    topic: 'culture',
-    category: '문화·연예',
+    topic: 'music',
+    category: '가요·음악',
     aliases: [],
     banned: [],
     script: [
@@ -315,8 +243,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '브이에이치에스',
-    topic: 'culture',
-    category: '문화·연예',
+    topic: 'movie',
+    category: '영화',
     aliases: ['비디오테이프', 'VHS'],
     banned: [],
     script: [
@@ -327,8 +255,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '슬램덩크',
-    topic: 'culture',
-    category: '문화·연예',
+    topic: 'anime',
+    category: '애니·만화',
     aliases: [],
     banned: [],
     script: [
@@ -339,8 +267,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '세일러문',
-    topic: 'culture',
-    category: '문화·연예',
+    topic: 'anime',
+    category: '애니·만화',
     aliases: [],
     banned: [],
     script: [
@@ -351,26 +279,14 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '가요톱텐',
-    topic: 'culture',
-    category: '문화·연예',
+    topic: 'music',
+    category: '가요·음악',
     aliases: [],
     banned: [],
     script: [
       '음악 순위 프로그램이에요',
       '1위를 하면 트로피를 줬죠',
       '5주 연속이면 명예의 전당에 올랐어요',
-    ],
-  },
-  {
-    word: '브로마이드사진',
-    topic: 'culture',
-    category: '문화·연예',
-    aliases: [],
-    banned: [],
-    script: [
-      '큰 사진이에요',
-      '잡지 부록으로 나왔죠',
-      '방 벽에 붙였어요',
     ],
   },
   {
@@ -411,8 +327,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '스타크래프트',
-    topic: 'it',
-    category: 'IT·기술',
+    topic: 'game',
+    category: '게임',
     aliases: ['스타'],
     banned: [],
     script: [
@@ -423,8 +339,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '테트리스',
-    topic: 'it',
-    category: 'IT·기술',
+    topic: 'game',
+    category: '게임',
     aliases: [],
     banned: [],
     script: [
@@ -435,8 +351,8 @@ export const SAMPLE_WORDS: NonEmptyArray<AssocWord> = [
   },
   {
     word: '카트라이더',
-    topic: 'it',
-    category: 'IT·기술',
+    topic: 'game',
+    category: '게임',
     aliases: [],
     banned: [],
     script: [

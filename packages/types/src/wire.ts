@@ -23,6 +23,10 @@ export type ClientMessage =
   | { readonly type: 'settings'; readonly patch: Partial<RoomSettings> }
   | { readonly type: 'kick'; readonly target: PlayerId }
   | { readonly type: 'again' }
+  /** 이 라운드를 빨리 넘기자는 표. 전원이 동의하면 남은 시간이 줄어든다 */
+  | { readonly type: 'skip' }
+  /** 다음 힌트를 먼저 보자는 표. 과반이면 바로 열린다 */
+  | { readonly type: 'hint' }
   | { readonly type: 'ping' }
 
 // ── 서버 → 클라이언트 ────────────────────────────────
@@ -77,6 +81,23 @@ export type ServerMessage =
   | { readonly type: 'score'; readonly scores: readonly (readonly [PlayerId, number])[] }
   /** 판이 끝날 때 한 번. 지나온 라운드를 통째로 돌려준다 */
   | { readonly type: 'history'; readonly rounds: readonly RoundRecord[] }
+  /** 스킵 표 현황. 모두 모이면 남은 시간이 줄어든다 */
+  | {
+      readonly type: 'skip'
+      readonly votes: number
+      readonly needed: number
+      /** 나도 눌렀는가 */
+      readonly you: boolean
+    }
+  /** 힌트 표 현황. 과반이면 다음 힌트가 바로 열린다 */
+  | {
+      readonly type: 'hint'
+      readonly votes: number
+      readonly needed: number
+      readonly you: boolean
+      /** 더 열 힌트가 남았는가 */
+      readonly available: boolean
+    }
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly message: string }
 
 export type ServerErrorCode =
@@ -135,6 +156,10 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       return { type: 'start' }
     case 'again':
       return { type: 'again' }
+    case 'skip':
+      return { type: 'skip' }
+    case 'hint':
+      return { type: 'hint' }
     case 'ping':
       return { type: 'ping' }
     default:

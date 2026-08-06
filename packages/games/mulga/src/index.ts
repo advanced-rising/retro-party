@@ -151,6 +151,11 @@ export const mulgaGame: RoomGame<MulgaQuestion, MulgaView> = {
     }
   },
 
+  nextRevealAtMs(_question, round, nowMs): number | null {
+    const at = round.startedAtMs + DIGITS_AT_MS
+    return nowMs < at ? at : null
+  },
+
   /** ★ 정답 누출 방지. price 를 담지 않는다. 자릿수도 20초 뒤에야 나간다 */
   viewFor(input: ViewInput<MulgaQuestion>): MulgaView {
     const elapsedMs = input.nowMs - input.round.startedAtMs

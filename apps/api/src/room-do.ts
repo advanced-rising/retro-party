@@ -370,6 +370,10 @@ export class RoomDO implements DurableObject {
         return this.dispatch(engine.start(playerId, nowMs))
       case 'again':
         return this.dispatch(engine.again(playerId, nowMs))
+      case 'skip':
+        return this.dispatch(engine.skip(playerId, nowMs))
+      case 'hint':
+        return this.dispatch(engine.hint(playerId, nowMs))
       case 'settings': {
         const before = engine.state.room.settings.gameId
         const effects = engine.settings(playerId, message.patch, nowMs)

@@ -124,6 +124,14 @@ export const chosungGame: RoomGame<ChosungQuestion, ChosungView> = {
     }
   },
 
+  /** 힌트가 열리는 시각 — 「힌트 먼저 보기」 투표가 이 값을 본다 */
+  nextRevealAtMs(_question, round, nowMs): number | null {
+    const elapsed = nowMs - round.startedAtMs
+    if (elapsed < HINT_AT_MS) return round.startedAtMs + HINT_AT_MS
+    if (elapsed < VOWEL_AT_MS) return round.startedAtMs + VOWEL_AT_MS
+    return null
+  },
+
   /** ★ 정답 누출 방지. word · answers 를 절대 담지 않는다. */
   viewFor(input: ViewInput<ChosungQuestion>): ChosungView {
     const elapsed = input.nowMs - input.round.startedAtMs

@@ -29,6 +29,15 @@ export interface RoomGame<Question, View> {
   blockedWordsFor?(input: BlockedWordsInput<Question>): readonly string[]
 
   /**
+   * 다음에 무언가 열리는 **절대 시각**. 더 열릴 게 없으면 null.
+   *
+   * 「힌트 먼저 보기」 투표가 이걸 쓴다. 게임마다 힌트 규칙이 달라서
+   * 엔진이 직접 알 수 없다 — 게임이 알려주면 엔진은 라운드 시계를
+   * 그 시각까지 앞당긴다. 그러면 힌트도 열리고 남은 시간도 같이 줄어든다.
+   */
+  nextRevealAtMs?(question: Question, round: RoundState, nowMs: number): number | null
+
+  /**
    * 라운드가 끝날 때 얹는 점수 (단어 연상의 출제자 보너스) — 02 문서 §3.5
    * 맞힌 사람 수에 연동되므로 라운드가 끝나야 계산할 수 있다.
    */

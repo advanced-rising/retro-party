@@ -18,6 +18,7 @@ import {
   COUNTDOWN_MS,
   MASKED_ANSWER,
   REVEAL_MS,
+  SKIP_TO_MS,
   type Effect,
 } from './engine.ts'
 import type { ContentPool, RoomGame, RoundState } from './game.ts'
@@ -391,4 +392,77 @@ test('연속 입력은 막힌다', () => {
   send(10)
   send(20)
   assert.deepEqual(errorCodes(send(30)), ['rate_limited'])
+})
+
+// ── 스킵 ────────────────────────────────────────────
+
+test('전원이 넘기기를 누르면 남은 시간이 줄어든다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  const phaseBefore = engine.state.room.phase
+  assert.equal(phaseBefore.kind, 'playing')
+  if (phaseBefore.kind !== 'playing') return
+
+  engine.skip(P('a'), COUNTDOWN_MS + 1_000)
+  const midway = engine.state.room.phase
+  assert.ok(
+    midway.kind === 'playing' && midway.endsAtMs === phaseBefore.endsAtMs,
+    '한 명만 눌러서는 안 줄어든다',
+  )
+
+  engine.skip(P('b'), COUNTDOWN_MS + 2_000)
+  const after = engine.state.room.phase
+  assert.ok(after.kind === 'playing')
+  if (after.kind !== 'playing') return
+  assert.equal(after.endsAtMs, COUNTDOWN_MS + 2_000 + SKIP_TO_MS, '5초만 남는다')
+  assert.ok(after.endsAtMs < phaseBefore.endsAtMs)
+})
+
+test('이미 맞힌 사람은 자동으로 동의한 것으로 센다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+  const before = engine.state.room.phase
+  if (before.kind !== 'playing') throw new Error('playing 이어야 한다')
+
+  // a 가 맞혔다 — 남은 사람은 b 뿐이다
+  engine.chat({ playerId: P('a'), text: ANSWER, channel: 'all', nowMs: COUNTDOWN_MS + 300 })
+  assert.equal(engine.state.room.phase.kind, 'playing', 'b 가 아직 남았다')
+
+  engine.skip(P('b'), COUNTDOWN_MS + 1_000)
+  const after = engine.state.room.phase
+  if (after.kind !== 'playing') throw new Error('playing 이어야 한다')
+  assert.equal(after.endsAtMs, COUNTDOWN_MS + 1_000 + SKIP_TO_MS, 'b 한 명으로 충분하다')
+})
+
+test('스킵 표 현황이 참가자에게 전달된다', () => {
+  const engine = makeEngine('casual', ['a', 'b', 'c'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  const effects = engine.skip(P('a'), COUNTDOWN_MS + 500)
+  const notices = effects.flatMap((e) =>
+    e.kind === 'send' && e.message.type === 'skip' ? [e.message] : [],
+  )
+  assert.equal(notices.length, 3, '세 명 모두에게 간다')
+  assert.equal(notices[0]?.votes, 1)
+  assert.equal(notices[0]?.needed, 3)
+})
+
+test('남은 시간이 이미 5초 밑이면 더 당기지 않는다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+  const before = engine.state.room.phase
+  if (before.kind !== 'playing') throw new Error('playing 이어야 한다')
+
+  const nearEnd = before.endsAtMs - 2_000
+  engine.skip(P('a'), nearEnd)
+  engine.skip(P('b'), nearEnd)
+
+  const after = engine.state.room.phase
+  if (after.kind !== 'playing') throw new Error('playing 이어야 한다')
+  assert.equal(after.endsAtMs, before.endsAtMs, '오히려 늘리면 안 된다')
 })

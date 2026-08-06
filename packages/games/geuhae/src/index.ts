@@ -151,6 +151,12 @@ export const geuhaeGame: RoomGame<GeuhaeQuestion, GeuhaeView> = {
     return { answer: String(question.year), detail: question.card }
   },
 
+  nextRevealAtMs(question, round, nowMs): number | null {
+    const opened = openHintCount(nowMs - round.startedAtMs)
+    if (opened >= question.hints.length) return null
+    return round.startedAtMs + opened * HINT_INTERVAL_MS
+  },
+
   /** ★ 정답 누출 방지. year 도, 아직 안 열린 힌트도 담지 않는다 */
   viewFor(input: ViewInput<GeuhaeQuestion>): GeuhaeView {
     const elapsedMs = input.nowMs - input.round.startedAtMs

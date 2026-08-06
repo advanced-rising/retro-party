@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Copy, LogOut, Lock, Users, WifiOff } from 'lucide-react'
+import { Copy, FastForward, Lightbulb, LogOut, Lock, Users, WifiOff } from 'lucide-react'
 import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
@@ -211,8 +211,61 @@ function Room({
       </header>
 
       {view.phase.kind === 'playing' && (
-        <div className="pb-3">
-          <Timer endsAtMs={view.phase.endsAtMs} totalMs={view.phase.roundMs} />
+        <div className="flex items-center gap-2 pb-3">
+          <div className="min-w-0 flex-1">
+            <Timer endsAtMs={view.phase.endsAtMs} totalMs={view.phase.roundMs} />
+          </div>
+
+          {/*
+            스킵 — 아무도 못 맞히고 있을 때 남은 시간을 통째로 버리지 않게 한다.
+            판단은 서버가 한다. 이미 맞힌 사람은 자동으로 동의한 것으로 센다
+          */}
+          {/* 다음 힌트 먼저 보기 — 과반이면 시계를 당긴다. 점수도 그만큼 깎인다 */}
+          {view.hint.available && (
+            <button
+              type="button"
+              onClick={actions.hint}
+              disabled={view.hint.you}
+              className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold disabled:opacity-60"
+              style={{
+                background: view.hint.you ? 'var(--lime-wash)' : 'var(--bg-elevated)',
+                borderColor: view.hint.you ? 'var(--lime)' : 'var(--border)',
+                color: view.hint.you ? 'var(--lime)' : 'var(--text-lo)',
+              }}
+              aria-label="다음 힌트 먼저 보기에 투표"
+              title="과반이 누르면 다음 힌트가 바로 열립니다. 남은 시간과 점수도 줄어요"
+            >
+              <Lightbulb size={12} aria-hidden />
+              힌트
+              {view.hint.needed > 0 && (
+                <span className="tnum">
+                  {view.hint.votes}/{view.hint.needed}
+                </span>
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={actions.skip}
+            disabled={view.skip.you}
+            className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold disabled:opacity-60"
+            style={{
+              background: view.skip.you ? 'var(--lime-wash)' : 'var(--bg-elevated)',
+              borderColor: view.skip.you ? 'var(--lime)' : 'var(--border)',
+              color: view.skip.you ? 'var(--lime)' : 'var(--text-lo)',
+            }}
+            aria-label="이 문제 넘기기에 투표"
+            title="모두 누르면 5초 뒤에 정답이 공개됩니다"
+          >
+            <FastForward size={12} aria-hidden />
+            넘기기
+            {view.skip.needed > 0 && (
+              <span className="tnum">
+                {view.skip.votes}/{view.skip.needed}
+              </span>
+            )}
+          </button>
         </div>
       )}
 

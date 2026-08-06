@@ -114,3 +114,73 @@ test('힌트는 시간이 지나야 board 에 붙는다', () => {
     '14초 뒤에는 모음이 열린다',
   )
 })
+
+// ── 힌트 먼저 보기 ──────────────────────────────────
+
+test('과반이 힌트를 누르면 바로 열리고 남은 시간도 준다', () => {
+  const engine = makeEngine(['a', 'b'])
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  const before = engine.state.room.phase
+  if (before.kind !== 'playing') throw new Error('playing 이어야 한다')
+  assert.equal(engine.viewFor(P('a'), COUNTDOWN_MS + 1_000)?.hint, null, '아직 힌트가 없다')
+
+  // 2명 중 과반은 1명
+  engine.hint(P('a'), COUNTDOWN_MS + 1_000)
+
+  const after = engine.state.room.phase
+  if (after.kind !== 'playing') throw new Error('playing 이어야 한다')
+  assert.ok(after.endsAtMs < before.endsAtMs, '남은 시간이 줄어야 한다')
+  assert.ok(
+    engine.viewFor(P('a'), COUNTDOWN_MS + 1_000)?.hint !== null,
+    '힌트가 바로 열려야 한다',
+  )
+})
+
+test('힌트를 앞당기면 점수가 깎인다', () => {
+  const answerOfRoom = (e: ReturnType<typeof makeEngine>) => {
+    const q = e.state.question
+    if (q === null) throw new Error('문제가 없다')
+    return chosungGame.reveal(q).answer
+  }
+
+  const plain = makeEngine(['a', 'b'])
+  plain.start(P('a'), 0)
+  plain.tick(COUNTDOWN_MS)
+  plain.chat({ playerId: P('a'), text: answerOfRoom(plain), channel: 'all', nowMs: COUNTDOWN_MS + 1_000 })
+
+  const hinted = makeEngine(['a', 'b'])
+  hinted.start(P('a'), 0)
+  hinted.tick(COUNTDOWN_MS)
+  hinted.hint(P('a'), COUNTDOWN_MS + 1_000)
+  hinted.chat({ playerId: P('a'), text: answerOfRoom(hinted), channel: 'all', nowMs: COUNTDOWN_MS + 1_000 })
+
+  const plainScore = plain.state.room.scores.get(P('a')) ?? 0
+  const hintedScore = hinted.state.room.scores.get(P('a')) ?? 0
+  assert.ok(
+    hintedScore < plainScore,
+    `힌트를 봤으면 대가를 치러야 한다: 힌트 ${hintedScore} vs 그냥 ${plainScore}`,
+  )
+})
+
+test('더 열 힌트가 없으면 시계를 당기지 않는다', () => {
+  const engine = makeEngine(['a', 'b'])
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  // 모음까지 다 열린 시점
+  const late = COUNTDOWN_MS + 15_000
+  const before = engine.state.room.phase
+  if (before.kind !== 'playing') throw new Error('playing 이어야 한다')
+
+  const effects = engine.hint(P('a'), late)
+  const notice = effects.flatMap((e) =>
+    e.kind === 'send' && e.message.type === 'hint' ? [e.message] : [],
+  )[0]
+  assert.equal(notice?.available, false, '더 열 게 없다고 알려준다')
+
+  const after = engine.state.room.phase
+  if (after.kind !== 'playing') throw new Error('playing 이어야 한다')
+  assert.equal(after.endsAtMs, before.endsAtMs, '시간을 건드리면 안 된다')
+})

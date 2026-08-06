@@ -150,7 +150,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 2012,
-    topic: 'culture',
+    topic: 'music',
     hints: [
       '런던에서 하계 올림픽이 열렸다',
       '국내에 LTE 가 본격적으로 깔리기 시작했다',
@@ -166,7 +166,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 1997,
-    topic: 'culture',
+    topic: 'drama',
     hints: [
       '드라마 「별은 내 가슴에」 가 방영됐다',
       'H.O.T 가 데뷔한 이듬해다',

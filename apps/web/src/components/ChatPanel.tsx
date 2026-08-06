@@ -97,12 +97,13 @@ export function ChatPanel({
         ))}
       </div>
 
-      <form onSubmit={submit} className="flex items-center gap-2 px-1 pb-1">
+      {/* items-stretch — 버튼이 입력창과 같은 높이가 되게 한다 */}
+      <form onSubmit={submit} className="flex items-stretch gap-2 px-1 pb-1">
         {teamMode && (
           <button
             type="button"
             onClick={() => setChannel((c) => (c === 'team' ? 'all' : 'team'))}
-            className="shrink-0 rounded-lg border px-2.5 py-2 text-xs font-semibold"
+            className="flex shrink-0 items-center rounded-lg border px-2.5 text-xs font-semibold"
             style={{
               background: channel === 'team' ? 'var(--lime-wash)' : 'var(--bg-elevated)',
               color: channel === 'team' ? 'var(--lime)' : 'var(--text-lo)',
@@ -122,14 +123,14 @@ export function ChatPanel({
           autoComplete="off"
           enterKeyHint="send"
           placeholder={teamMode && channel === 'all' ? '전체 채널 — 점수가 안 들어갑니다' : '답을 입력하세요'}
-          className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-base outline-none disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-base outline-none disabled:opacity-50"
           style={{ background: 'var(--bg-surface)', color: 'var(--text-hi)' }}
         />
 
         <button
           type="submit"
           disabled={disabled || text.trim().length === 0}
-          className="shrink-0 rounded-lg px-3 py-2 font-semibold disabled:opacity-40"
+          className="flex aspect-square shrink-0 items-center justify-center rounded-lg font-semibold disabled:opacity-40"
           style={{ background: 'var(--lime)', color: 'var(--on-lime)' }}
           aria-label="보내기"
         >

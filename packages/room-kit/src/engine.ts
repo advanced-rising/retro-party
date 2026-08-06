@@ -30,6 +30,17 @@ import { assignTeams, planTeams, rotateForNextMatch } from './teams.ts'
  * 참가자는 전부 사람이다. 봇으로 자리를 채우는 코드는 여기 없다.
  */
 
+/**
+ * 스킵 — 아무도 못 맞히고 있을 때 남은 시간을 통째로 버리지 않게 한다.
+ *
+ * 표가 다 모이면 라운드를 **즉시 끝내지 않고** 이만큼만 남긴다.
+ * 바로 끊으면 마지막 순간에 떠오른 사람이 억울하고, 정답 공개가 급작스럽다.
+ */
+export const SKIP_TO_MS = 5_000
+
+/** 힌트를 앞당기려면 과반이 필요하다. 스킵과 달리 전원까지는 안 간다 */
+export const HINT_VOTE_RATIO = 0.5
+
 export const COUNTDOWN_MS = 3_000
 export const REVEAL_MS = 4_000
 /** 출제자가 이만큼 조용하면 라운드를 넘긴다 — 02 문서 §3.8 */
@@ -83,6 +94,10 @@ export interface Engine<Question, View> {
   start(playerId: PlayerId, nowMs: number): readonly Effect[]
   again(playerId: PlayerId, nowMs: number): readonly Effect[]
   settings(playerId: PlayerId, patch: Partial<RoomSettings>, nowMs: number): readonly Effect[]
+  /** 이 라운드를 빨리 넘기자는 표 */
+  skip(playerId: PlayerId, nowMs: number): readonly Effect[]
+  /** 다음 힌트를 먼저 보자는 표 */
+  hint(playerId: PlayerId, nowMs: number): readonly Effect[]
   /** 방 생성 시점에만 쓴다. 방장 검증도 로비 검증도 하지 않는다 */
   settingsUnchecked(patch: Partial<RoomSettings>): void
   /**
@@ -121,6 +136,10 @@ export function createEngine<Question, View>(
   let history: RoundRecord[] = []
   /** 이번 라운드에 누가 언제 맞혔는가 */
   let solvers: RoundSolver[] = []
+  /** 이번 라운드에 스킵을 누른 사람 */
+  let skipVotes = new Set<PlayerId>()
+  /** 이번 라운드에 힌트를 앞당기자고 누른 사람 */
+  let hintVotes = new Set<PlayerId>()
 
   const rateLimiter: RateLimiter = createRateLimiter()
 
@@ -222,6 +241,8 @@ export function createEngine<Question, View>(
 
     presenterSpokeAtMs = nowMs
     solvers = []
+    skipVotes = new Set()
+    hintVotes = new Set()
 
     return [
       setPhase({ kind: 'playing', roundNo, endsAtMs: round.endsAtMs, roundMs: game.meta.roundMs }),
@@ -546,6 +567,107 @@ export function createEngine<Question, View>(
 
     setLocked(locked): void {
       room = { ...room, locked }
+    },
+
+    /**
+     * 스킵 표.
+     *
+     * **이미 맞힌 사람은 자동으로 동의한 것으로 본다** — 어차피 기다리는 중이다.
+     * 그래서 「맞힌 사람 + 스킵을 누른 사람」이 답할 수 있는 사람 전부가 되면
+     * 남은 시간을 5초로 줄인다. 표는 서버가 세고 클라이언트는 결과만 받는다.
+     */
+    skip(playerId, nowMs): readonly Effect[] {
+      const phase = room.phase
+      if (phase.kind !== 'playing' || round === null) return []
+
+      const speaker = find(playerId)
+      if (speaker === undefined || !speaker.connected || speaker.benched) return []
+      if (round.presenter === playerId) return []
+
+      skipVotes.add(playerId)
+
+      const eligible = active().filter((p) => p.playerId !== round?.presenter)
+      const agreed = eligible.filter(
+        (p) => skipVotes.has(p.playerId) || round?.solved.includes(p.playerId) === true,
+      ).length
+
+      const effects: Effect[] = eligible.map((p) => ({
+        kind: 'send' as const,
+        to: p.playerId,
+        message: {
+          type: 'skip' as const,
+          votes: agreed,
+          needed: eligible.length,
+          you: skipVotes.has(p.playerId),
+        },
+      }))
+
+      if (agreed < eligible.length) return effects
+
+      // 전원 동의 — 남은 시간을 줄인다. 이미 5초 밑이면 그대로 둔다
+      const endsAtMs = Math.min(phase.endsAtMs, nowMs + SKIP_TO_MS)
+      if (endsAtMs >= phase.endsAtMs) return effects
+
+      round = { ...round, endsAtMs }
+      effects.push(setPhase({ ...phase, endsAtMs }))
+      effects.push({ kind: 'alarm', atMs: endsAtMs })
+      return effects
+    },
+
+    /**
+     * 힌트 먼저 보기.
+     *
+     * 과반이 모이면 **라운드 시계를 다음 공개 시각까지 앞당긴다.**
+     * 힌트를 따로 여는 게 아니라 시간을 당기는 이유는, 그래야 네 게임에
+     * 똑같이 먹히고 **남은 시간도 같이 줄어들기** 때문이다.
+     * 점수도 그만큼 깎인다 — 힌트를 봤으면 대가를 치르는 게 맞다.
+     */
+    hint(playerId, nowMs): readonly Effect[] {
+      const phase = room.phase
+      if (phase.kind !== 'playing' || round === null || question === null) return []
+
+      const speaker = find(playerId)
+      if (speaker === undefined || !speaker.connected || speaker.benched) return []
+      if (round.presenter === playerId) return []
+
+      const nextAt = game.nextRevealAtMs?.(question, round, nowMs) ?? null
+      const eligible = active().filter((p) => p.playerId !== round?.presenter)
+      const needed = Math.max(1, Math.ceil(eligible.length * HINT_VOTE_RATIO))
+
+      if (nextAt !== null) hintVotes.add(playerId)
+      const votes = eligible.filter((p) => hintVotes.has(p.playerId)).length
+
+      const notices: Effect[] = eligible.map((p) => ({
+        kind: 'send' as const,
+        to: p.playerId,
+        message: {
+          type: 'hint' as const,
+          votes,
+          needed,
+          you: hintVotes.has(p.playerId),
+          available: nextAt !== null,
+        },
+      }))
+
+      if (nextAt === null || votes < needed) return notices
+
+      // 시계를 당긴다. 힌트가 열리고 남은 시간도 그만큼 줄어든다
+      const shift = Math.max(0, nextAt - nowMs)
+      if (shift === 0) return notices
+
+      round = {
+        ...round,
+        startedAtMs: round.startedAtMs - shift,
+        endsAtMs: round.endsAtMs - shift,
+      }
+      hintVotes = new Set()
+
+      return [
+        ...notices,
+        setPhase({ ...phase, endsAtMs: phase.endsAtMs - shift }),
+        ...boardsAt(nowMs),
+        { kind: 'alarm', atMs: Math.min(nowMs + 1_000, phase.endsAtMs - shift) },
+      ]
     },
 
     tick(nowMs): readonly Effect[] {

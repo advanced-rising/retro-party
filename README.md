@@ -135,8 +135,8 @@ pnpm --filter @retro/web dev      # 화면                          :3000
 
 ```bash
 pnpm typecheck    # tsc --build (strict + noUncheckedIndexedAccess 등)
-pnpm test         # 94건 — 정답 누출 · 팀 채널 격리 · 재접속 · 벤치 회전
-pnpm content      # 문항 487개 검증 — 정답 누출 · 중복 · 근거 유무
+pnpm test         # 107건 — 정답 누출 · 팀 채널 격리 · 재접속 · 스킵/힌트 투표
+pnpm content      # 문항 599개 검증 — 정답 누출 · 중복 · 근거 유무
 pnpm contrast     # 컬러 토큰 대비 (WCAG AA / 1.4.11) — 32건
 pnpm smoke        # 서버를 띄운 뒤 Phase 0.5 관문 실측
 ```
