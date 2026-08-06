@@ -367,6 +367,9 @@ async function gateAllGames(): Promise<void> {
     geuhae: { expect: 'hints', forbid: ['year', 'card'] },
     assoc: { expect: 'role', forbid: ['word', 'answers', 'banned'] },
     sketch: { expect: 'role', forbid: ['word', 'answers', 'banned'] },
+    timeline: { expect: 'events', forbid: ['order', 'year'] },
+    oxquiz: { expect: 'youAnswered', forbid: ['answer'] },
+    kkungtta: { expect: 'nextChar', forbid: ['dictionary'] },
     mulga: { expect: 'item', forbid: ['price'] },
   }
 

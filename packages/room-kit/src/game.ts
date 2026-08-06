@@ -38,6 +38,14 @@ export interface RoomGame<Question, View> {
   nextRevealAtMs?(question: Question, round: RoundState, nowMs: number): number | null
 
   /**
+   * 정답이 나온 뒤 **문제 자체가 달라지는 게임** (쿵쿵따의 단어 사슬).
+   *
+   * 반환하면 엔진이 그 문제로 갈아끼운다. 대부분의 게임은 한 라운드에
+   * 문제가 하나라 이걸 구현하지 않는다.
+   */
+  advance?(question: Question, input: JudgeInput<Question>): Question
+
+  /**
    * 라운드가 끝날 때 얹는 점수 (단어 연상의 출제자 보너스) — 02 문서 §3.5
    * 맞힌 사람 수에 연동되므로 라운드가 끝나야 계산할 수 있다.
    */

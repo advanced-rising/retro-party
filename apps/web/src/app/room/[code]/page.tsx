@@ -143,6 +143,9 @@ function Room({
   const [copied, setCopied] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
+  // 내 정답 줄이 새로 들어온 순간을 센다. 이 값이 오르면 이펙트가 터진다
+  const myCorrects = view.lines.filter((l) => l.from === view.you && l.correct !== null).length
+
   const copy = useCallback(() => {
     void navigator.clipboard.writeText(window.location.href)
     setCopied(true)
@@ -308,6 +311,8 @@ function Room({
         strokes={view.strokes}
         onStroke={actions.stroke}
         onCanvas={actions.canvas}
+        onAnswer={(text) => actions.send(text, teamMode ? 'team' : 'all')}
+        correctAt={myCorrects}
       />
 
       {/* 결과 화면에서는 항상, 진행 중에는 버튼을 눌렀을 때만 */}
@@ -400,6 +405,9 @@ const GAME_ICONS: Readonly<Record<string, string>> = {
   assoc: 'messages-square',
   mulga: 'coins',
   sketch: 'pencil',
+  timeline: 'list-ordered',
+  oxquiz: 'circle-slash',
+  kkungtta: 'link',
 }
 
 function Splash() {

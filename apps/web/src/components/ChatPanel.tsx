@@ -163,9 +163,13 @@ function Line({
         background: correct ? 'var(--lime-wash)' : 'transparent',
         color: correct ? 'var(--lime)' : 'var(--text)',
       }}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
+      initial={correct ? { opacity: 0, scale: 0.9 } : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={
+        correct
+          ? { type: 'spring', stiffness: 420, damping: 22 }
+          : { duration: 0.18, ease: 'easeOut' }
+      }
       aria-live={correct ? 'assertive' : 'off'}
     >
       {line.channel === 'team' && (

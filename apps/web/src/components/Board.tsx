@@ -9,6 +9,10 @@ import { ChosungBoard, isChosungView } from '@/components/boards/ChosungBoard'
 import { GeuhaeBoard, isGeuhaeView } from '@/components/boards/GeuhaeBoard'
 import { isMulgaView, MulgaBoard } from '@/components/boards/MulgaBoard'
 import { isSketchView, SketchBoard } from '@/components/boards/SketchBoard'
+import { isKkungttaView, KkungttaBoard } from '@/components/boards/KkungttaBoard'
+import { isOxView, OxBoard } from '@/components/boards/OxBoard'
+import { isTimelineView, TimelineBoard } from '@/components/boards/TimelineBoard'
+import { CorrectBurst } from '@/components/CorrectBurst'
 import { Countdown } from '@/components/Countdown'
 import { ReportButton } from '@/components/ReportButton'
 
@@ -29,6 +33,8 @@ export function Board({
   strokes,
   onStroke,
   onCanvas,
+  onAnswer,
+  correctAt,
 }: {
   board: unknown
   phase: RoomPhase
@@ -42,6 +48,10 @@ export function Board({
     points: readonly { x: number; y: number }[]
   }) => void
   onCanvas: (action: 'clear' | 'undo') => void
+  /** 연표 정렬은 채팅으로 순서를 보낸다 */
+  onAnswer: (text: string) => void
+  /** 내가 맞힌 순간마다 1씩 오른다. 값이 바뀔 때 이펙트가 터진다 */
+  correctAt: number
 }) {
   if (phase.kind === 'lobby') {
     return (
@@ -98,7 +108,7 @@ export function Board({
 
   if (isChosungView(board)) {
     return (
-      <Frame>
+      <Frame correctAt={correctAt}>
         <ChosungBoard view={board} />
         <Solved count={board.solvedCount} you={board.youSolved} />
       </Frame>
@@ -107,7 +117,7 @@ export function Board({
 
   if (isGeuhaeView(board)) {
     return (
-      <Frame>
+      <Frame correctAt={correctAt}>
         <GeuhaeBoard view={board} />
         <Solved count={board.solvedCount} you={board.youSolved} />
       </Frame>
@@ -116,8 +126,35 @@ export function Board({
 
   if (isMulgaView(board)) {
     return (
-      <Frame>
+      <Frame correctAt={correctAt}>
         <MulgaBoard view={board} />
+        <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
+  if (isKkungttaView(board)) {
+    return (
+      <Frame correctAt={correctAt}>
+        <KkungttaBoard view={board} />
+        <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
+  if (isOxView(board)) {
+    return (
+      <Frame correctAt={correctAt}>
+        <OxBoard view={board} onAnswer={onAnswer} />
+        <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
+  if (isTimelineView(board)) {
+    return (
+      <Frame correctAt={correctAt}>
+        <TimelineBoard view={board} onSubmit={onAnswer} />
         <Solved count={board.solvedCount} you={board.youSolved} />
       </Frame>
     )
@@ -125,7 +162,7 @@ export function Board({
 
   if (isSketchView(board)) {
     return (
-      <Frame>
+      <Frame correctAt={correctAt}>
         <SketchBoard
           view={board}
           strokes={strokes}
@@ -143,7 +180,7 @@ export function Board({
 
   if (isAssocView(board)) {
     return (
-      <Frame>
+      <Frame correctAt={correctAt}>
         <AssocBoard view={board} presenterName={presenterName} />
         <Solved
           count={board.solvedCount}
@@ -211,14 +248,24 @@ function Solved({ count, you }: { count: number; you: boolean }) {
   )
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({
+  children,
+  correctAt = 0,
+}: {
+  children: React.ReactNode
+  correctAt?: number
+}) {
   return (
-    <section
-      className="flex min-h-44 flex-col items-center justify-center rounded-xl border px-5 py-6 text-center"
+    <m.section
+      className="relative flex min-h-44 flex-col items-center justify-center overflow-hidden rounded-xl border px-5 py-6 text-center"
       style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      initial={{ opacity: 0, scale: 0.985 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       aria-live="polite"
     >
+      <CorrectBurst trigger={correctAt} />
       {children}
-    </section>
+    </m.section>
   )
 }

@@ -24,6 +24,9 @@
     "@retro/game-geuhae": "workspace:*",
     "@retro/game-assoc": "workspace:*",
     "@retro/game-mulga": "workspace:*",
-    "@retro/game-sketch": "workspace:*"
+    "@retro/game-sketch": "workspace:*",
+    "@retro/game-timeline": "workspace:*",
+    "@retro/game-oxquiz": "workspace:*",
+    "@retro/game-kkungtta": "workspace:*"
   }
 }

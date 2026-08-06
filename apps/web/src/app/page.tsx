@@ -424,8 +424,12 @@ function CreateRoomForm({
                   {game.tagline}
                 </span>
               </span>
-              <span className="tnum shrink-0 text-xs" style={{ color: 'var(--text-dim)' }}>
+              <span
+                className="tnum shrink-0 text-right text-xs"
+                style={{ color: 'var(--text-dim)' }}
+              >
                 {Math.round(game.roundMs / 1000)}초
+                {game.minPlayers > 1 && <span className="block">{game.minPlayers}명~</span>}
               </span>
             </button>
             )
@@ -540,7 +544,11 @@ function SoloSection({
       <TopicPicker selected={topics} onChange={setTopics} />
 
       <div className="flex flex-wrap gap-1.5">
-        {games.map((game) => {
+        {/* 혼자 못 하는 게임은 애초에 안 보여준다. 스케치는 그릴 사람과
+            맞힐 사람이 갈려야 성립한다 */}
+        {games
+          .filter((game) => game.minPlayers <= 1)
+          .map((game) => {
           const Icon = gameIcon(game.icon)
           return (
             <button

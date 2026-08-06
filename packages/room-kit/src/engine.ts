@@ -240,9 +240,15 @@ export function createEngine<Question, View>(
   // ── 라운드 진행 ────────────────────────────────────
 
   function beginRound(roundNo: number, nowMs: number): Effect[] {
-    // 혼자 모드에는 출제자를 세우지 않는다. 게임 모듈의 스크립트가 대신한다 (03 문서 §7.3)
+    /**
+     * 출제자는 **맞힐 사람이 따로 있을 때만** 세운다.
+     *
+     * 처음에는 모드(solo)로 갈랐는데, 그러면 혼자 모드 방에 두 명이 있어도
+     * 아무도 그리지 않는 스케치가 만들어진다. 인원으로 보는 게 맞다 —
+     * 혼자면 출제자가 없고, 단어 연상은 그때 스크립트가 대신한다 (03 문서 §7.3)
+     */
     const presenter =
-      game.meta.hasPresenter && room.settings.mode !== 'solo' ? pickPresenter(roundNo) : null
+      game.meta.hasPresenter && active().length >= 2 ? pickPresenter(roundNo) : null
 
     question = game.createRound({
       seed: room.seed,
@@ -336,9 +342,22 @@ export function createEngine<Question, View>(
     if (room.phase.kind !== 'lobby' && room.phase.kind !== 'result') {
       return [err(playerId, 'game_in_progress', '이미 진행 중입니다')]
     }
-    const need = minPlayersFor(room.settings.mode)
+    /**
+     * 필요한 인원은 **모드와 게임 중 더 큰 쪽**이다.
+     *
+     * 혼자 모드는 1명부터지만, 스케치처럼 출제자와 맞히는 사람이 갈려야
+     * 성립하는 게임은 그래도 2명이 필요하다. 모드만 보면 혼자서 스케치를
+     * 시작할 수 있고, 그러면 아무도 그리지 않는 빈 캔버스만 남는다.
+     */
+    const need = Math.max(minPlayersFor(room.settings.mode), game.meta.minPlayers)
     if (room.participants.filter((p) => p.connected).length < need) {
-      return [err(playerId, 'not_enough_players', `${need}명부터 시작할 수 있습니다`)]
+      return [
+        err(
+          playerId,
+          'not_enough_players',
+          `${game.meta.name}은(는) ${need}명부터 시작할 수 있습니다`,
+        ),
+      ]
     }
 
     const effects: Effect[] = [...seatTeams()]
@@ -400,6 +419,14 @@ export function createEngine<Question, View>(
       if (judgement.kind === 'correct') {
         correct = { points: judgement.points, rank: judgement.rank }
         round = { ...round, solved: [...round.solved, playerId] }
+        // 쿵쿵따처럼 정답이 나오면 문제가 이어지는 게임
+        question = game.advance?.(question, {
+          question,
+          round,
+          playerId,
+          text: clean.text,
+          atMs: nowMs,
+        }) ?? question
         solvers.push({
           playerId,
           points: judgement.points,

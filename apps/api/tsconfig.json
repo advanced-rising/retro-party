@@ -31,6 +31,15 @@
       ],
       "@retro/game-sketch": [
         "../../packages/games/sketch/src/index.ts"
+      ],
+      "@retro/game-timeline": [
+        "../../packages/games/timeline/src/index.ts"
+      ],
+      "@retro/game-oxquiz": [
+        "../../packages/games/oxquiz/src/index.ts"
+      ],
+      "@retro/game-kkungtta": [
+        "../../packages/games/kkungtta/src/index.ts"
       ]
     }
   },
@@ -59,6 +68,15 @@
     },
     {
       "path": "../../packages/games/sketch"
+    },
+    {
+      "path": "../../packages/games/timeline"
+    },
+    {
+      "path": "../../packages/games/oxquiz"
+    },
+    {
+      "path": "../../packages/games/kkungtta"
     }
   ]
 }

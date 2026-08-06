@@ -49,7 +49,7 @@ export function Roster({
               animate={{ opacity: p.benched ? 0.55 : 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
               transition={transitionFor(motionOk, SPRING_SETTLE)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+              className="relative flex items-center gap-2 overflow-hidden rounded-lg px-2 py-1.5"
               style={{ background: p.playerId === you ? 'var(--bg-elevated)' : 'transparent' }}
             >
               {/* 줄 자체가 layout 으로 미끄러지므로 숫자까지 움직이면 울렁거린다 */}
@@ -85,6 +85,19 @@ export function Roster({
               </span>
 
               <ScoreNumber value={score} highlight={first} />
+
+              {/* 1등이 바뀌는 순간에만 반짝인다. 계속 빛나면 눈이 피로하다 */}
+              {first && motionOk && (
+                <m.span
+                  key={`crown-${p.playerId}`}
+                  className="pointer-events-none absolute inset-0 rounded-lg"
+                  style={{ background: 'var(--gold)' }}
+                  initial={{ opacity: 0.18 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 0.7, ease: 'easeOut' }}
+                  aria-hidden
+                />
+              )}
             </m.li>
           )
         })}

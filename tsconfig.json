@@ -20,6 +20,15 @@
       "path": "./packages/games/sketch"
     },
     {
+      "path": "./packages/games/timeline"
+    },
+    {
+      "path": "./packages/games/oxquiz"
+    },
+    {
+      "path": "./packages/games/kkungtta"
+    },
+    {
       "path": "./packages/games/geuhae"
     },
     {

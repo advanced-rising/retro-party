@@ -5,6 +5,9 @@ import { geuhaeGame } from '@retro/game-geuhae'
 import { assocGame } from '@retro/game-assoc'
 import { mulgaGame } from '@retro/game-mulga'
 import { sketchGame } from '@retro/game-sketch'
+import { timelineGame } from '@retro/game-timeline'
+import { oxquizGame } from '@retro/game-oxquiz'
+import { kkungttaGame } from '@retro/game-kkungtta'
 
 /**
  * 게임 레지스트리 — 09 문서 §6
@@ -22,6 +25,9 @@ const GAMES: readonly RoomGame<never, never>[] = [
   assocGame as unknown as RoomGame<never, never>,
   mulgaGame as unknown as RoomGame<never, never>,
   sketchGame as unknown as RoomGame<never, never>,
+  timelineGame as unknown as RoomGame<never, never>,
+  oxquizGame as unknown as RoomGame<never, never>,
+  kkungttaGame as unknown as RoomGame<never, never>,
 ]
 
 export const DEFAULT_GAME_ID: GameId = chosungGame.id
@@ -44,6 +50,9 @@ const TAGLINES: Readonly<Record<string, string>> = {
   assoc: '한 명이 설명하고 나머지가 맞힌다. 매번 다른 판',
   mulga: '그때 그 가격을 맞힌다. 더 비싼지 싼지 알려준다',
   sketch: '한 명이 그리고 나머지가 맞힌다. 못 그릴수록 재밌다',
+  timeline: '사건 다섯 개를 시간순으로 늘어놓는다. 거의 맞춰도 점수를 준다',
+  oxquiz: '10초. 생각할 틈을 주지 않는다. 가장 빠른 리듬',
+  kkungtta: '세 글자로 끝말을 잇는다. 오래 이을수록 좋다',
 }
 
 const ICONS: Readonly<Record<string, string>> = {
@@ -52,6 +61,9 @@ const ICONS: Readonly<Record<string, string>> = {
   assoc: 'messages-square',
   mulga: 'coins',
   sketch: 'pencil',
+  timeline: 'list-ordered',
+  oxquiz: 'circle-slash',
+  kkungtta: 'link',
 }
 
 export function resolveGame(gameId: GameId): AnyGame {
