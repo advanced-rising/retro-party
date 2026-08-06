@@ -18,6 +18,9 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { SAMPLE_WORDS as CHOSUNG_WORDS } from '@retro/game-chosung'
 import { SAMPLE_YEARS } from '@retro/game-geuhae'
 import { SAMPLE_WORDS as ASSOC_WORDS } from '@retro/game-assoc'
+import { SAMPLE_SUBJECTS } from '@retro/game-sketch'
+import { SAMPLE_SETS } from '@retro/game-timeline'
+import { DICTIONARY } from '@retro/game-kkungtta'
 import { syllableLength, toChosung } from '@retro/room-kit'
 
 const BASE = process.env['RETRO_API'] ?? 'http://127.0.0.1:8787'
@@ -100,10 +103,56 @@ function guessAssoc(view: Json): string | null {
   return hits.length === 0 ? null : pick(hits).word
 }
 
+/** 스케치 — 그림은 못 보므로 카테고리와 글자 수로만 찍는다 */
+function guessSketch(view: Json): string | null {
+  const category = typeof view['category'] === 'string' ? view['category'] : null
+  const length = typeof view['length'] === 'number' ? view['length'] : null
+  if (category === null || length === null) return null
+  const hits = SAMPLE_SUBJECTS.filter(
+    (s) => s.category === category && syllableLength(s.word) === length,
+  )
+  return hits.length === 0 ? null : pick(hits).word
+}
+
+/** 연표 — 세트를 찾아 정답 순서를 만든다 */
+function guessTimeline(view: Json): string | null {
+  const events = Array.isArray(view['events']) ? (view['events'] as string[]) : []
+  if (events.length === 0) return null
+  const set = SAMPLE_SETS.find((s) => s.events.some((e) => e.text === events[0]))
+  if (set === undefined) return null
+
+  const years = events.map((text) => set.events.find((e) => e.text === text)?.year ?? 0)
+  const order = years
+    .map((year, i) => ({ year, i }))
+    .sort((a, b) => a.year - b.year)
+    .map((e) => e.i + 1)
+  return order.join('')
+}
+
+/** OX — 반반으로 찍는다. 봇이 다 맞히면 사람이 재미없다 */
+function guessOx(): string {
+  return Math.random() < 0.5 ? 'O' : 'X'
+}
+
+/** 쿵쿵따 — 이을 수 있는 단어를 사전에서 찾는다 */
+function guessKkungtta(view: Json): string | null {
+  const nextChar = typeof view['nextChar'] === 'string' ? view['nextChar'] : null
+  const chain = Array.isArray(view['chain']) ? (view['chain'] as string[]) : []
+  if (nextChar === null) return null
+  const hits = DICTIONARY.filter((w) => w.startsWith(nextChar) && !chain.includes(w))
+  return hits.length === 0 ? null : pick(hits)
+}
+
 function answerFor(view: Json): string | null {
   if ('chosung' in view) return guessChosung(view)
   if ('hints' in view) return guessYear(view)
-  if (view['role'] === 'guesser') return guessAssoc(view)
+  if ('nextChar' in view) return guessKkungtta(view)
+  if ('youAnswered' in view) return guessOx()
+  if ('events' in view && 'title' in view) return guessTimeline(view)
+  if (view['role'] === 'guesser') {
+    // 스케치와 단어 연상은 뷰 모양이 같다. script 유무로 가른다
+    return 'script' in view ? guessAssoc(view) : guessSketch(view)
+  }
   return null
 }
 
@@ -188,6 +237,13 @@ async function handle(bot: Bot, message: Json): Promise<void> {
     return
   }
 
+  // 스케치 차례가 됐다 — 그려야 라운드가 돈다
+  if (view['role'] === 'drawer' && !bot.presenting) {
+    bot.presenting = true
+    void scribble(bot)
+    return
+  }
+
   if (bot.answered || bot.presenting) return
   if (view['youSolved'] === true) {
     bot.answered = true
@@ -221,6 +277,31 @@ async function describe(bot: Bot, view: Json): Promise<void> {
     await wait(2_000, 4_000)
     if (bot.socket.readyState !== WebSocket.OPEN) return
     say(bot, line)
+  }
+}
+
+/**
+ * 봇이 그리는 차례가 됐을 때.
+ *
+ * **알아볼 수 있는 그림은 못 그린다.** 라운드가 멈추지 않게 낙서를 할 뿐이다.
+ * 스케치를 제대로 확인하려면 사람이 그려야 한다 —
+ * 브라우저 두 개를 `?as=이름` 으로 띄우는 편이 낫다.
+ */
+async function scribble(bot: Bot): Promise<void> {
+  const colors = ['ink', 'lime', 'blue', 'red', 'amber'] as const
+  for (let stroke = 0; stroke < 6; stroke++) {
+    await wait(900, 1_800)
+    if (bot.socket.readyState !== WebSocket.OPEN) return
+
+    const cx = 0.2 + Math.random() * 0.6
+    const cy = 0.2 + Math.random() * 0.6
+    const points = Array.from({ length: 10 }, (_, i) => ({
+      x: Math.min(1, Math.max(0, cx + Math.cos(i / 2) * 0.12 * Math.random())),
+      y: Math.min(1, Math.max(0, cy + Math.sin(i / 2) * 0.12 * Math.random())),
+    }))
+    bot.socket.send(
+      JSON.stringify({ type: 'stroke', color: pick(colors), width: 6, points }),
+    )
   }
 }
 

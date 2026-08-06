@@ -2,6 +2,7 @@ import {
   CalendarClock,
   Clapperboard,
   Coins,
+  Award,
   BookOpen,
   CircleDot,
   CircleSlash,
@@ -10,7 +11,12 @@ import {
   Gamepad2,
   Goal,
   Globe,
+  Circle,
+  Crown,
+  Gem,
   Landmark,
+  Medal,
+  Shield,
   Link2,
   ListOrdered,
   MessagesSquare,
@@ -68,4 +74,18 @@ const TOPIC_ICONS: Readonly<Record<string, LucideIcon>> = {
 
 export function topicIcon(name: string): LucideIcon {
   return TOPIC_ICONS[name] ?? Tag
+}
+
+/** 급·단 아이콘 — 10 문서 §2.2. 급은 갈수록 단단해지고, 단은 갈수록 화려해진다 */
+const TITLE_ICONS: Readonly<Record<string, LucideIcon>> = {
+  circle: Circle,
+  shield: Shield,
+  award: Award,
+  medal: Medal,
+  gem: Gem,
+  crown: Crown,
+}
+
+export function titleIcon(name: string): LucideIcon {
+  return TITLE_ICONS[name] ?? Circle
 }

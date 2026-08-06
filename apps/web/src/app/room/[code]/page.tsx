@@ -22,7 +22,8 @@ import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
 import { fetchRoomState, requestTicket } from '@/lib/api'
 import { gameIcon } from '@/lib/game-icon'
-import { API_BASE, loadIdentity } from '@/lib/identity'
+import { LevelBadge } from '@/components/LevelBadge'
+import { API_BASE, addXp, loadIdentity, loadXp } from '@/lib/identity'
 import { useRoomSocket } from '@/lib/room-socket'
 
 /**
@@ -142,9 +143,25 @@ function Room({
   )
   const [copied, setCopied] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [xp, setXp] = useState(0)
+
+  useEffect(() => setXp(loadXp()), [])
 
   // 내 정답 줄이 새로 들어온 순간을 센다. 이 값이 오르면 이펙트가 터진다
   const myCorrects = view.lines.filter((l) => l.from === view.you && l.correct !== null).length
+
+  /**
+   * 판이 끝나면 얻은 점수만큼 경험치를 쌓는다.
+   *
+   * 서버가 아니라 브라우저에 쌓는다 — 계정과 DB 가 아직 없다.
+   * 그래서 이 값은 표시용이고 랭크에 쓰지 않는다 (10 문서 §7).
+   */
+  const finished = view.phase.kind === 'result'
+  const myScore = view.you === null ? 0 : (view.scores.get(view.you) ?? 0)
+  useEffect(() => {
+    if (!finished || myScore <= 0) return
+    setXp(addXp(myScore))
+  }, [finished, myScore])
 
   const copy = useCallback(() => {
     void navigator.clipboard.writeText(window.location.href)
@@ -184,6 +201,8 @@ function Room({
           {code}
           <Copy size={13} aria-hidden />
         </button>
+
+        <LevelBadge xp={xp} compact />
 
         <GameIcon size={16} className="shrink-0" color="var(--text-lo)" aria-hidden />
 

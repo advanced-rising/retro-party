@@ -20,7 +20,8 @@ import { InAppBanner } from '@/components/InAppBanner'
 import { createRoom, fetchGames, fetchRooms, quickJoinTarget, type GameInfo } from '@/lib/api'
 import { makeNickname } from '@retro/room-kit'
 import { gameIcon } from '@/lib/game-icon'
-import { loadIdentity, saveNickname } from '@/lib/identity'
+import { LevelBadge } from '@/components/LevelBadge'
+import { loadIdentity, loadXp, saveNickname } from '@/lib/identity'
 
 /**
  * 첫 화면 — 03 문서 §4
@@ -41,6 +42,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [code, setCode] = useState('')
+  const [xp, setXp] = useState(0)
 
   const reload = useCallback(async () => {
     setRefreshing(true)
@@ -55,6 +57,7 @@ export default function Home() {
 
   useEffect(() => {
     setNickname(loadIdentity().nickname)
+    setXp(loadXp())
     void fetchGames()
       .then(setGames)
       .catch(() => undefined)
@@ -104,9 +107,15 @@ export default function Home() {
       <InAppBanner />
 
       <header>
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-hi)' }}>
-          손이심심
-        </h1>
+        <div className="flex items-start gap-3">
+          <h1
+            className="min-w-0 flex-1 text-3xl font-bold tracking-tight"
+            style={{ color: 'var(--text-hi)' }}
+          >
+            손이심심
+          </h1>
+          <LevelBadge xp={xp} />
+        </div>
         <p className="mt-1.5 text-sm" style={{ color: 'var(--text-lo)' }}>
           채팅창이 곧 정답 입력이다. 먼저 외치는 사람이 이긴다.
         </p>

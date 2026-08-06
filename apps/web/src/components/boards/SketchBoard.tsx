@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Eraser, Pencil, Undo2 } from 'lucide-react'
+import { Check, Eraser, Pencil, Undo2 } from 'lucide-react'
 import {
   SKETCH_COLORS,
   SKETCH_WIDTHS,
@@ -34,13 +34,42 @@ export const isSketchView = (v: unknown): v is SketchView =>
   v !== null &&
   ((v as { role?: unknown }).role === 'drawer' || (v as { role?: unknown }).role === 'guesser')
 
-/** 획 색은 토큰을 그대로 쓴다. 다크·라이트에서 알아서 뒤집힌다 */
+/**
+ * 획 색은 컬러 토큰을 쓴다. 다크·라이트에서 알아서 뒤집힌다.
+ *
+ * ★ **캔버스에는 `var(--x)` 를 그대로 넣을 수 없다.** CSS 가 아니라
+ * 2D 컨텍스트라 변수를 모르고, 무효값이면 조용히 기본값(검정)으로 그린다.
+ * 그래서 실제 색으로 **풀어서** 넣어야 한다 — resolveColor 가 그 일을 한다.
+ * (CSS 속성에는 var() 를 그대로 써도 된다. 색 단추가 그 경우다.)
+ */
+const COLOR_TOKEN: Readonly<Record<SketchColor, string>> = {
+  ink: '--text-hi',
+  lime: '--lime',
+  blue: '--blue',
+  red: '--red',
+  amber: '--amber',
+}
+
 const COLOR_VAR: Readonly<Record<SketchColor, string>> = {
   ink: 'var(--text-hi)',
   lime: 'var(--lime)',
   blue: 'var(--blue)',
   red: 'var(--red)',
   amber: 'var(--amber)',
+}
+
+const COLOR_LABEL: Readonly<Record<SketchColor, string>> = {
+  ink: '기본',
+  lime: '초록',
+  blue: '파랑',
+  red: '빨강',
+  amber: '노랑',
+}
+
+/** 토큰을 지금 테마의 실제 색으로 푼다 */
+function resolveColor(el: Element, color: SketchColor): string {
+  const value = getComputedStyle(el).getPropertyValue(COLOR_TOKEN[color]).trim()
+  return value.length > 0 ? value : '#888888'
 }
 
 /** 한 번에 몰아 보낼 점의 수. 점마다 보내면 소켓이 터진다 */
@@ -95,8 +124,7 @@ export function SketchBoard({
     }): void => {
       if (stroke.points.length === 0) return
       ctx.beginPath()
-      ctx.strokeStyle = getComputedStyle(canvas).getPropertyValue('--stroke-' + stroke.color) ||
-        COLOR_VAR[stroke.color]
+      ctx.strokeStyle = resolveColor(canvas, stroke.color)
       ctx.lineWidth = stroke.width * (w / 600)
       const first = stroke.points[0]
       if (first === undefined) return
@@ -128,6 +156,13 @@ export function SketchBoard({
   }, [repaint])
 
   useEffect(repaint, [repaint])
+
+  // 테마가 바뀌면 풀어 둔 색이 낡는다. 캔버스는 CSS 처럼 알아서 안 바뀐다
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener('change', repaint)
+    return () => media.removeEventListener('change', repaint)
+  }, [repaint])
 
   const toNormalized = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -196,41 +231,77 @@ export function SketchBoard({
         }}
       />
 
-      <div className="mt-2 flex w-full items-center gap-2">
-        <div className="flex gap-1">
+      {/* 지금 무엇으로 그리는지. 단추만으로는 확신이 안 선다 */}
+      <p
+        className="mt-2 flex w-full items-center gap-1.5 text-xs"
+        style={{ color: 'var(--text-dim)' }}
+      >
+        <span
+          className="inline-block rounded-full"
+          style={{
+            width: Math.max(6, width),
+            height: Math.max(6, width),
+            background: COLOR_VAR[color],
+            boxShadow: '0 0 0 1px var(--border)',
+          }}
+          aria-hidden
+        />
+        {COLOR_LABEL[color]} · 굵기 {SKETCH_WIDTHS.indexOf(width) + 1}단계
+      </p>
+
+      <div className="mt-1.5 flex w-full items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {SKETCH_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              aria-label={`색 ${c}`}
-              className="size-6 rounded-full border-2"
+              aria-label={`색 ${COLOR_LABEL[c]}`}
+              aria-pressed={color === c}
+              title={COLOR_LABEL[c]}
+              className="relative flex items-center justify-center rounded-full transition-transform"
               style={{
+                width: 26,
+                height: 26,
                 background: COLOR_VAR[c],
-                borderColor: color === c ? 'var(--text-hi)' : 'transparent',
+                transform: color === c ? 'scale(1.15)' : 'scale(1)',
+                // 고른 색은 링을 두 겹으로 둘러 배경색과 무관하게 보이게 한다
+                boxShadow:
+                  color === c
+                    ? '0 0 0 2px var(--bg-surface), 0 0 0 4px var(--text-hi)'
+                    : '0 0 0 1px var(--border)',
               }}
-            />
+            >
+              {color === c && (
+                <Check size={13} strokeWidth={3.5} color="var(--bg-base)" aria-hidden />
+              )}
+            </button>
           ))}
         </div>
 
-        <div className="flex gap-1">
-          {SKETCH_WIDTHS.map((w) => (
+        <div className="ml-1 flex gap-1">
+          {SKETCH_WIDTHS.map((w, i) => (
             <button
               key={w}
               type="button"
               onClick={() => setWidth(w)}
-              aria-label={`굵기 ${w}`}
-              className="flex size-6 items-center justify-center rounded-md border"
+              aria-label={`굵기 ${i + 1}단계`}
+              aria-pressed={width === w}
+              title={`굵기 ${i + 1}단계`}
+              className="flex items-center justify-center rounded-md border-2"
               style={{
+                width: 30,
+                height: 26,
                 background: width === w ? 'var(--lime-wash)' : 'var(--bg-elevated)',
                 borderColor: width === w ? 'var(--lime)' : 'var(--border)',
               }}
             >
+              {/* 실제 굵기 그대로 보여준다. 눈으로 비교돼야 고르는 의미가 있다 */}
               <span
                 className="rounded-full"
                 style={{
-                  width: Math.max(3, w * 0.9),
-                  height: Math.max(3, w * 0.9),
+                  width: w + 2,
+                  height: w + 2,
                   background: width === w ? 'var(--lime)' : 'var(--text-lo)',
                 }}
               />
