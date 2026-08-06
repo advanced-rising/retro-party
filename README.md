@@ -78,8 +78,27 @@ Durable Objects · KV · R2 · Queues · Cron
         │  Hyperdrive
 PostgreSQL           계정 · 플레이 · 랭킹 · 힌트 카드 DB
         │
-NestJS               콘텐츠 파이프라인 · 검증 · 관리자 · 배치
+NestJS  (Phase 2~)   관리자 · 오류 신고 · 배치
 ```
+
+**MVP는 백엔드 서버 없이 Workers + PostgreSQL만으로 돌아간다.**
+
+## 콘텐츠는 Claude Code로 만든다
+
+힌트 데이터는 **런타임이 아니라 사전에** 만들어 DB에 넣는다. 그리고 그 생성 작업은 초기에 API 파이프라인이 아니라 **Claude Code로 직접** 한다.
+
+```
+Claude Code ─ 웹검색 ─→ data/facts/*.json
+                            ↓  validate.mjs      스키마 · 25자 · 연도 미언급
+                            ↓  verify-tier-a.mjs 공공 API 대조 (LLM 불필요)
+                            ↓  seed.mjs
+                        PostgreSQL
+```
+
+- **Phase 0~1 API 비용 $0.** 구독에 포함된 것으로 처리
+- Tier A 검증(수치형)은 **애초에 LLM이 필요 없다** — 공공 API 조회 후 숫자 비교
+- 규약(`CONTENT-RULES.md`)과 JSON 스키마를 먼저 확정해두면, 나중에 API 배치로 갈아타도 산출물이 같다
+- 전환 판단은 Phase 2에: **처리를 지켜보는 시간이 ~$140보다 아까워질 때** (02 문서 §6)
 
 ## 현재 상태
 

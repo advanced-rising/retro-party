@@ -57,7 +57,20 @@
                     └──────────────────────────┘
 ```
 
-### 2.1 NestJS의 자리
+### 2.1 NestJS의 자리 — Phase 2부터
+
+**Phase 0~1에는 NestJS가 필요 없다.** 콘텐츠를 Claude Code로 만들기 때문이다 (02 문서 §3.0).
+
+```
+Phase 0~1   Claude Code → data/facts/*.json → validate.mjs → seed.mjs → PG
+            NestJS 없음. 스크립트 3개면 끝난다.
+
+Phase 2+    관리자 UI, 오류 신고 처리, 난이도 보정 배치가 쌓이면 NestJS 도입
+            (API 파이프라인으로 전환한다면 그것도 여기)
+```
+
+**MVP에서 백엔드 서버를 안 띄워도 된다는 뜻이다.** Workers + PG만으로 게임이 돌아간다.
+아래 구조는 Phase 2 이후의 최종형이다.
 
 **NestJS는 사용자 트래픽 경로 밖에 있다.** 플레이어 요청은 Workers에서 완결된다.
 
