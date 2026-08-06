@@ -22,6 +22,12 @@ import { SAMPLE_QUESTIONS, type OxQuestion as OxEntry } from './data.ts'
 
 export const ROUND_MS = 10_000
 
+/**
+ * 찍어서 반반인 게임이라 틀리면 확실히 아파야 한다.
+ * 다만 시도는 한 번뿐이므로 늘어나지 않는 고정값이다.
+ */
+const WRONG_PENALTY = 30
+
 /** 한 번 답하면 끝이다. 바꿔 찍기를 막는다 */
 export interface OxQuestion {
   readonly text: string
@@ -67,14 +73,14 @@ export const oxquizGame: RoomGame<OxQuestion, OxView> = {
   judge(input: JudgeInput<OxQuestion>): Judgement {
     if (input.round.solved.includes(input.playerId)) return { kind: 'ignored' }
     // 한 번 틀리면 그 라운드는 끝. 안 그러면 O 치고 X 치면 반드시 맞는다
-    if (input.round.partials.includes(input.playerId)) return { kind: 'ignored' }
+    if (input.round.wrongs.includes(input.playerId)) return { kind: 'ignored' }
 
     const guess = parseOx(input.text)
     if (guess === null) return { kind: 'ignored' }
 
     if (guess !== input.question.answer) {
-      // partials 에 남겨서 두 번째 시도를 막는다
-      return { kind: 'partial', points: 0, note: '땡' }
+      // wrongs 에 남는 것으로 두 번째 시도가 막힌다 (아래 판정 첫 줄)
+      return { kind: 'wrong', note: '땡', penalty: WRONG_PENALTY }
     }
 
     const rank = input.round.solved.length
@@ -91,7 +97,7 @@ export const oxquizGame: RoomGame<OxQuestion, OxView> = {
 
   isRoundOver(_question: OxQuestion, round: RoundState): boolean {
     // 맞힌 사람 + 틀린 사람이 전부 나오면 더 기다릴 이유가 없다
-    const done = new Set([...round.solved, ...round.partials])
+    const done = new Set([...round.solved, ...round.wrongs])
     return done.size > 0 && done.size >= round.expectedSolvers
   },
 
@@ -107,7 +113,7 @@ export const oxquizGame: RoomGame<OxQuestion, OxView> = {
       youSolved: input.round.solved.includes(input.playerId),
       youAnswered:
         input.round.solved.includes(input.playerId) ||
-        input.round.partials.includes(input.playerId),
+        input.round.wrongs.includes(input.playerId),
     }
   },
 }

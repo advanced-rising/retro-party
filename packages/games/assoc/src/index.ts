@@ -1,7 +1,9 @@
 import { asGameId, filterByTopics, type PlayerId } from '@retro/types'
 import {
+  escalatingPenalty,
   normalizeAnswer,
   roundScore,
+  wrongCount,
   syllableLength,
   toChosung,
   type BlockedWordsInput,
@@ -29,6 +31,9 @@ import { SAMPLE_WORDS, type AssocWord } from './data.ts'
 export const ROUND_MS = 90_000
 /** 혼자 모드에서 스크립트가 열리는 시각 */
 const SCRIPT_AT_MS = [0, 30_000, 60_000] as const
+
+/** 설명을 듣고 떠올리는 게임이라 넉넉히 봐준다 */
+const PENALTY = { free: 3, step: 10, max: 40 } as const
 
 /** 출제자 보너스 — 맞힌 사람 수 × 40, 최대 160 — 02 문서 §3.5 */
 const PRESENTER_PER_SOLVER = 40
@@ -140,9 +145,11 @@ export const assocGame: RoomGame<AssocQuestion, AssocView> = {
 
     if (!input.question.answers.includes(guess)) {
       // 글자 수가 맞으면 진지한 시도로 본다. 아니면 설명에 대한 잡담이다
-      return syllableLength(guess) === input.question.length
-        ? { kind: 'wrong' }
-        : { kind: 'ignored' }
+      if (syllableLength(guess) !== input.question.length) return { kind: 'ignored' }
+      return {
+        kind: 'wrong',
+        penalty: escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+      }
     }
 
     const rank = input.round.solved.length

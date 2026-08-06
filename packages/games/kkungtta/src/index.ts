@@ -1,8 +1,10 @@
 import { asGameId, type PlayerId } from '@retro/types'
 import {
+  escalatingPenalty,
   normalizeAnswer,
   roundScore,
   syllableLength,
+  wrongCount,
   type CreateRoundInput,
   type JudgeInput,
   type Judgement,
@@ -32,6 +34,12 @@ export const ROUND_MS = 60_000
 
 /** 쿵쿵따는 세 글자다. 이걸 바꾸면 다른 게임이 된다 */
 export const WORD_LENGTH = 3
+
+/**
+ * 사전이 좁아서 아는 단어가 막히는 일이 있다 (아래 주석 참고).
+ * 우리 잘못으로 틀린 걸 세게 깎으면 안 된다 — 아주 약하게만.
+ */
+const PENALTY = { free: 4, step: 5, max: 20 } as const
 
 export interface KkungttaQuestion {
   /** 시작 단어. 여기서부터 이어 간다 */
@@ -112,7 +120,17 @@ export const kkungttaGame: RoomGame<KkungttaQuestion, KkungttaView> = {
     if (syllableLength(word) !== WORD_LENGTH) return { kind: 'ignored' }
 
     const problem = checkWord(word, input.question.chain, input.question.dictionary)
-    if (problem !== null) return { kind: 'wrong', note: PROBLEM_NOTE[problem] }
+    if (problem !== null) {
+      return {
+        kind: 'wrong',
+        note: PROBLEM_NOTE[problem],
+        // 사전에 없어서 막힌 건 사용자 잘못이 아니다. 그건 안 깎는다
+        penalty:
+          problem === 'unknown'
+            ? 0
+            : escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+      }
+    }
 
     // ★ 여러 번 이을 수 있다. 한 번 맞혔다고 끝나지 않는 유일한 게임이다
     const rank = input.round.solved.length

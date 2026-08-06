@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, Send } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, Send } from 'lucide-react'
 import { Reorder, useDragControls } from 'motion/react'
 import { useMotionOk } from '@/lib/motion'
 
@@ -84,7 +84,7 @@ export function TimelineBoard({
       </button>
 
       <p className="mt-1.5 text-xs" style={{ color: 'var(--text-dim)' }}>
-        거의 맞춰도 점수를 받습니다. 채팅에 {items.map((i) => i + 1).join('')} 처럼 쳐도 됩니다
+        손잡이를 끌거나 화살표로 옮기세요. 거의 맞춰도 점수를 받습니다
       </p>
     </>
   )
@@ -110,12 +110,28 @@ function Row({
   return (
     <Reorder.Item
       value={value}
-      dragListener={draggable}
+      /*
+       * 카드 전체가 아니라 **손잡이로만** 끈다.
+       * 모바일에서 카드 전체를 드래그로 잡으면 페이지 세로 스크롤과 싸운다 —
+       * 목록을 훑으려는 손가락이 매번 카드를 끌고 다니게 된다.
+       */
+      dragListener={false}
       dragControls={controls}
-      className="flex items-center gap-2 rounded-lg border px-3 py-2 text-left"
-      style={{ background: 'var(--bg-elevated)', cursor: draggable ? 'grab' : 'default' }}
+      className="flex items-center gap-2 rounded-lg border px-2 py-2 text-left"
+      style={{ background: 'var(--bg-elevated)' }}
       as="li"
     >
+      {draggable && (
+        <span
+          onPointerDown={(e) => controls.start(e)}
+          className="-ml-1 shrink-0 touch-none p-1"
+          style={{ cursor: 'grab' }}
+          aria-hidden
+        >
+          <GripVertical size={14} color="var(--text-dim)" />
+        </span>
+      )}
+
       <span className="tnum w-4 shrink-0 text-xs font-semibold" style={{ color: 'var(--lime)' }}>
         {position + 1}
       </span>
@@ -125,23 +141,24 @@ function Row({
 
       {/* 드래그가 어려운 환경을 위한 대체 조작 */}
       <span className="flex shrink-0 gap-0.5">
+        {/* 손가락으로 정확히 누를 수 있는 크기 — 44px 권장을 지킨다 */}
         <button
           type="button"
           onClick={() => onMove(position, position - 1)}
           disabled={position === 0}
-          className="rounded p-1 disabled:opacity-30"
+          className="flex size-8 items-center justify-center rounded disabled:opacity-30"
           aria-label="위로"
         >
-          <ArrowUp size={12} color="var(--text-lo)" aria-hidden />
+          <ArrowUp size={14} color="var(--text-lo)" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => onMove(position, position + 1)}
           disabled={position === total - 1}
-          className="rounded p-1 disabled:opacity-30"
+          className="flex size-8 items-center justify-center rounded disabled:opacity-30"
           aria-label="아래로"
         >
-          <ArrowDown size={12} color="var(--text-lo)" aria-hidden />
+          <ArrowDown size={14} color="var(--text-lo)" aria-hidden />
         </button>
       </span>
     </Reorder.Item>

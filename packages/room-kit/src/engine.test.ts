@@ -22,6 +22,7 @@ import {
   type Effect,
 } from './engine.ts'
 import type { ContentPool, RoomGame, RoundState } from './game.ts'
+import { escalatingPenalty, wrongCount } from './game.ts'
 import { roundScore } from './scoring.ts'
 
 /**
@@ -46,7 +47,16 @@ const fakeGame: RoomGame<FakeQuestion, FakeView> = {
   createRound: () => ({ answer: ANSWER }),
   judge(input) {
     if (input.round.solved.includes(input.playerId)) return { kind: 'ignored' }
-    if (input.text.trim() !== input.question.answer) return { kind: 'wrong' }
+    if (input.text.trim() !== input.question.answer) {
+      return {
+        kind: 'wrong',
+        penalty: escalatingPenalty(wrongCount(input.round, input.playerId), {
+          free: 2,
+          step: 15,
+          max: 60,
+        }),
+      }
+    }
     const rank = input.round.solved.length
     return {
       kind: 'correct',
@@ -379,6 +389,74 @@ test('9번째 사람은 들어올 수 없다', () => {
   const engine = makeEngine('casual', ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
   assert.deepEqual(errorCodes(engine.join({ participant: player('i'), nowMs: 0 })), ['room_full'])
   assert.equal(engine.state.room.participants.length, 8)
+})
+
+// ── ★ 오답 벌점 ─────────────────────────────────────
+
+test('오답을 난사하면 점수가 깎이고 마이너스가 된다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  // 처음 몇 번은 봐준다 — 진지한 시도까지 벌하면 아무도 안 친다
+  let t = COUNTDOWN_MS
+  const miss = () => {
+    t += 1_200
+    engine.chat({ playerId: P('a'), text: '틀린답', channel: 'all', nowMs: t })
+  }
+
+  miss()
+  miss()
+  assert.equal(engine.state.room.scores.get(P('a')), 0, '초반 시도는 안 깎는다')
+
+  for (let i = 0; i < 6; i++) miss()
+  const score = engine.state.room.scores.get(P('a')) ?? 0
+  assert.ok(score < 0, `난사하면 마이너스가 된다 — 지금 ${score}`)
+})
+
+test('벌점이 갈수록 커진다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  let t = COUNTDOWN_MS
+  const deltas: number[] = []
+  let last = 0
+  for (let i = 0; i < 8; i++) {
+    t += 1_200
+    engine.chat({ playerId: P('a'), text: '틀린답', channel: 'all', nowMs: t })
+    const now = engine.state.room.scores.get(P('a')) ?? 0
+    deltas.push(last - now)
+    last = now
+  }
+
+  const charged = deltas.filter((d) => d > 0)
+  assert.ok(charged.length > 0, '언젠가는 깎여야 한다')
+  assert.ok(
+    (charged.at(-1) ?? 0) > (charged[0] ?? 0),
+    `나중 벌점이 더 커야 한다 — ${charged.join(', ')}`,
+  )
+})
+
+test('맞히면 벌점을 만회할 수 있다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  let t = COUNTDOWN_MS
+  for (let i = 0; i < 5; i++) {
+    t += 1_200
+    engine.chat({ playerId: P('a'), text: '틀린답', channel: 'all', nowMs: t })
+  }
+  const penalised = engine.state.room.scores.get(P('a')) ?? 0
+  assert.ok(penalised < 0)
+
+  t += 1_200
+  engine.chat({ playerId: P('a'), text: ANSWER, channel: 'all', nowMs: t })
+  assert.ok(
+    (engine.state.room.scores.get(P('a')) ?? 0) > penalised,
+    '정답은 벌점보다 커야 만회가 된다',
+  )
 })
 
 // ── 도배 ────────────────────────────────────────────

@@ -86,6 +86,28 @@ body {
   height: 100%;
 }
 
+/**
+ * 모바일 키보드가 입력창을 덮지 않게 — 06 문서 §8
+ *
+ * 채팅이 곧 정답 입력이라, 키보드가 올라왔을 때 입력창이 가려지면
+ * 게임 자체가 안 된다. 이 제품에서 가장 치명적인 레이아웃 버그다.
+ *
+ * `100dvh` 는 주소창은 따라가지만 **키보드는 못 따라간다.**
+ * `100dvh` 뒤에 `100svh` 를 겹치고, 지원하는 브라우저에서는
+ * 가상 키보드를 뺀 실제 영역(`env(keyboard-inset-height)`)까지 뺀다.
+ */
+.h-dvh {
+  height: 100dvh;
+  height: calc(100dvh - env(keyboard-inset-height, 0px));
+}
+
+/* iOS 사파리는 입력에 포커스가 가면 페이지를 확대한다. 16px 이상이면 안 한다 */
+input,
+textarea,
+select {
+  font-size: max(16px, 1rem);
+}
+
 body {
   background: var(--bg-base);
   color: var(--text);

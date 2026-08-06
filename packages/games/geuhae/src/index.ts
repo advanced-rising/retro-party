@@ -1,6 +1,8 @@
 import { asGameId, filterByTopics } from '@retro/types'
 import {
+  escalatingPenalty,
   roundScore,
+  wrongCount,
   type CreateRoundInput,
   type JudgeInput,
   type Judgement,
@@ -24,6 +26,9 @@ export const MAX_HINTS = 6
 
 /** ±1년은 이만큼. 한 사람당 한 번만 — 02 문서 §1.3 */
 const NEAR_POINTS = 30
+
+/** 연도는 41개뿐이라 찍기가 통한다. 세 번부터 깎는다 */
+const PENALTY = { free: 3, step: 15, max: 60 } as const
 
 /** 힌트가 적게 열렸을 때 맞히면 가산. 힌트 1개 = 1.75배, 전부 = 1.0배 */
 const EARLY_BONUS_PER_HINT = 0.15
@@ -134,13 +139,15 @@ export const geuhaeGame: RoomGame<GeuhaeQuestion, GeuhaeView> = {
     }
 
     // ±1년은 아깝다. 한 번만 인정한다 — 남발하면 찍기가 된다
+    const penalty = escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY)
+
     if (Math.abs(guess - input.question.year) === 1) {
       return input.round.partials.includes(input.playerId)
-        ? { kind: 'wrong' }
+        ? { kind: 'wrong', note: '아깝다', penalty }
         : { kind: 'partial', points: NEAR_POINTS }
     }
 
-    return { kind: 'wrong' }
+    return { kind: 'wrong', penalty }
   },
 
   isRoundOver(_question: GeuhaeQuestion, round: RoundState): boolean {

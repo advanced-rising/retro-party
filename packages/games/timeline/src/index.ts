@@ -1,6 +1,8 @@
 import { asGameId, filterByTopics } from '@retro/types'
 import {
+  escalatingPenalty,
   roundScore,
+  wrongCount,
   type CreateRoundInput,
   type JudgeInput,
   type Judgement,
@@ -27,6 +29,9 @@ export const ROUND_MS = 50_000
 /** 이 비율 이상 맞으면 부분 점수 */
 export const NEAR_RATIO = 0.6
 const NEAR_POINTS = 40
+
+/** 순서를 고쳐서 다시 내는 게 정상인 게임이라 넉넉히 봐준다 */
+const PENALTY = { free: 3, step: 10, max: 40 } as const
 
 export interface TimelineQuestion {
   readonly title: string
@@ -138,7 +143,11 @@ export const timelineGame: RoomGame<TimelineQuestion, TimelineView> = {
       }
     }
 
-    return { kind: 'wrong', note: `${Math.round(accuracy * 100)}% 맞았어요` }
+    return {
+      kind: 'wrong',
+      note: `${Math.round(accuracy * 100)}% 맞았어요`,
+      penalty: escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+    }
   },
 
   isRoundOver(_question: TimelineQuestion, round: RoundState): boolean {

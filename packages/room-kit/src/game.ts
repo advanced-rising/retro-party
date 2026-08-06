@@ -98,9 +98,45 @@ export interface JudgeInput<Question> {
 export type Judgement =
   /** 정답 후보가 아닌 잡담. 채팅에는 그대로 흐른다 */
   | { readonly kind: 'ignored' }
-  | { readonly kind: 'wrong'; readonly note?: string }
+  | {
+      readonly kind: 'wrong'
+      readonly note?: string
+      /**
+       * 깎을 점수. 없으면 0.
+       *
+       * **게임마다 다르게 둔다.** 「그때 그 가격」과 「연표 정렬」은 틀린 답에
+       * 방향을 알려주고 다시 치게 하는 게 설계의 핵심이라, 매번 깎으면
+       * 그 루프가 죽는다. 반대로 초성·OX 는 찍기를 막아야 한다.
+       */
+      readonly penalty?: number
+    }
   | { readonly kind: 'partial'; readonly points: number; readonly note?: string }
   | { readonly kind: 'correct'; readonly points: number; readonly rank: number }
+
+/** 이 사람이 이번 라운드에 몇 번 틀렸는가 */
+export function wrongCount(round: RoundState, playerId: PlayerId): number {
+  return round.wrongs.filter((id) => id === playerId).length
+}
+
+export interface PenaltyRule {
+  /** 이 횟수까지는 안 깎는다. 진지한 시도까지 벌하면 아무도 안 친다 */
+  readonly free: number
+  /** 그 뒤로 한 번 틀릴 때마다 늘어나는 폭 */
+  readonly step: number
+  readonly max: number
+}
+
+/**
+ * 난사 방지용 벌점.
+ *
+ * 첫 몇 번은 봐주고 그 뒤로는 커진다. 이게 「난무」와 「시도」를 가르는 선이다.
+ * 고정 벌점으로 하면 한 번 잘못 친 사람과 스무 번 도배한 사람이 같아진다.
+ */
+export function escalatingPenalty(attempts: number, rule: PenaltyRule): number {
+  const over = attempts - rule.free
+  if (over < 0) return 0
+  return Math.min(rule.max, rule.step * (over + 1))
+}
 
 /**
  * 판정에 붙는 한 줄 (`note`) — 「그때 그 가격」의 "더 비싸요" 같은 것.
@@ -118,6 +154,11 @@ export interface RoundState {
   readonly solved: readonly PlayerId[]
   /** 부분 점수를 이미 받은 참가자. 「그 해」의 ±1년은 1회만 — 02 문서 §1.3 */
   readonly partials: readonly PlayerId[]
+  /**
+   * 틀린 시도. **같은 사람이 여러 번 들어간다** — 개수가 곧 시도 횟수다.
+   * 게임이 이걸 보고 벌점을 키운다 (난사할수록 아프게).
+   */
+  readonly wrongs: readonly PlayerId[]
   readonly presenter: PlayerId | null
   /** 맞힐 수 있는 참가자 수 (출제자 제외). 전원 정답 시 조기 종료 판정에 쓴다 */
   readonly expectedSolvers: number
@@ -152,6 +193,7 @@ export function emptyRound(input: EmptyRoundInput): RoundState {
     endsAtMs: input.startedAtMs + input.roundMs,
     solved: [],
     partials: [],
+    wrongs: [],
     presenter: input.presenter,
     expectedSolvers: input.expectedSolvers,
   }

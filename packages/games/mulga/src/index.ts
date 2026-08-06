@@ -1,6 +1,8 @@
 import { asGameId, filterByTopics } from '@retro/types'
 import {
+  escalatingPenalty,
   roundScore,
+  wrongCount,
   type CreateRoundInput,
   type JudgeInput,
   type Judgement,
@@ -35,6 +37,13 @@ const NEAR_POINTS = 30
 
 /** 힌트가 열리는 시각 — 자릿수를 알려준다 */
 const DIGITS_AT_MS = 20_000
+
+/**
+ * ★ 이 게임은 **틀리면서 좁혀 가는** 게임이다.
+ * "더 비싸요" 를 보고 다시 치는 게 설계의 전부라, 벌점을 세게 걸면
+ * 그 루프가 통째로 죽는다. 여섯 번까지 봐주고 그 뒤로만 조금씩 깎는다.
+ */
+const PENALTY = { free: 6, step: 5, max: 25 } as const
 
 export interface MulgaQuestion {
   readonly item: string
@@ -137,7 +146,11 @@ export const mulgaGame: RoomGame<MulgaQuestion, MulgaView> = {
       return { kind: 'partial', points: NEAR_POINTS, note: `아깝다 — ${direction}` }
     }
 
-    return { kind: 'wrong', note: direction }
+    return {
+      kind: 'wrong',
+      note: direction,
+      penalty: escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+    }
   },
 
   isRoundOver(_question: MulgaQuestion, round: RoundState): boolean {

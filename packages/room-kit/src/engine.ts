@@ -416,6 +416,21 @@ export function createEngine<Question, View>(
       if (judgement.kind === 'wrong' || judgement.kind === 'partial') {
         note = judgement.note ?? null
       }
+
+      if (judgement.kind === 'wrong') {
+        // 시도 횟수를 남긴다. 게임이 이걸 보고 다음 벌점을 키운다
+        round = { ...round, wrongs: [...round.wrongs, playerId] }
+
+        const penalty = judgement.penalty ?? 0
+        if (penalty > 0) {
+          const scores = new Map(room.scores)
+          // ★ 아래로 막지 않는다. 난사하면 마이너스가 된다
+          scores.set(playerId, (scores.get(playerId) ?? 0) - penalty)
+          room = { ...room, scores }
+          note = note === null ? `-${penalty}` : `${note} · -${penalty}`
+          effects.push({ kind: 'broadcast', message: { type: 'score', scores: scoreList() } })
+        }
+      }
       if (judgement.kind === 'correct') {
         correct = { points: judgement.points, rank: judgement.rank }
         round = { ...round, solved: [...round.solved, playerId] }

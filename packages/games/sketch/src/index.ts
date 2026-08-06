@@ -1,7 +1,9 @@
 import { asGameId, filterByTopics, type PlayerId } from '@retro/types'
 import {
+  escalatingPenalty,
   normalizeAnswer,
   roundScore,
+  wrongCount,
   syllableLength,
   toChosung,
   type BlockedWordsInput,
@@ -28,6 +30,9 @@ import { SAMPLE_SUBJECTS, type SketchSubject } from './data.ts'
  */
 
 export const ROUND_MS = 90_000
+
+/** 그림을 보고 떠올리는 게임이라 넉넉히 봐준다 */
+const PENALTY = { free: 3, step: 10, max: 40 } as const
 
 /** 출제자 보너스 — 맞힌 사람 수 × 40, 최대 160 (02 문서 §3.5 와 같은 규칙) */
 const PRESENTER_PER_SOLVER = 40
@@ -122,9 +127,11 @@ export const sketchGame: RoomGame<SketchQuestion, SketchView> = {
     if (guess.length === 0) return { kind: 'ignored' }
 
     if (!input.question.answers.includes(guess)) {
-      return syllableLength(guess) === input.question.length
-        ? { kind: 'wrong' }
-        : { kind: 'ignored' }
+      if (syllableLength(guess) !== input.question.length) return { kind: 'ignored' }
+      return {
+        kind: 'wrong',
+        penalty: escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+      }
     }
 
     const rank = input.round.solved.length

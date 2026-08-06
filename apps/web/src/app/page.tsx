@@ -103,7 +103,7 @@ export default function Home() {
   const totalPlayers = rooms.reduce((sum, room) => sum + room.players, 0)
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-5 py-8">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-8 lg:max-w-3xl lg:py-12">
       <InAppBanner />
 
       <header>
@@ -212,7 +212,8 @@ export default function Home() {
             [바로 참가] 를 누르면 방을 하나 열어 드려요
           </p>
         ) : (
-          <ul className="space-y-1.5">
+          // 넓은 화면에서는 두 줄로 — 한 줄짜리 목록은 공간이 논다
+          <ul className="grid gap-1.5 sm:grid-cols-2">
             {rooms.map((room) => (
               <RoomRow key={room.code} room={room} games={games} onEnter={() => go(room.code)} />
             ))}
@@ -401,7 +402,7 @@ function CreateRoomForm({
       </Field>
 
       <Field label="게임">
-        <div className="space-y-1.5">
+        <div className="grid gap-1.5 sm:grid-cols-2">
           {games.map((game) => {
             const Icon = gameIcon(game.icon)
             const on = gameId === game.id

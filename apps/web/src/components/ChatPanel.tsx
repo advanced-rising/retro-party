@@ -49,6 +49,23 @@ export function ChatPanel({
 
   const teamOf = (id: PlayerId) => participants.find((p) => p.playerId === id)?.team ?? null
 
+  /**
+   * 모바일에서 키보드가 올라오면 입력창이 가려질 수 있다.
+   * visualViewport 가 줄어드는 순간 입력창을 화면 안으로 밀어 넣는다 —
+   * CSS 만으로는 기기·브라우저 조합을 다 못 잡는다.
+   */
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (viewport === undefined || viewport === null) return
+
+    const keepVisible = (): void => {
+      if (document.activeElement !== inputRef.current) return
+      inputRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+    viewport.addEventListener('resize', keepVisible)
+    return () => viewport.removeEventListener('resize', keepVisible)
+  }, [])
+
   function submit(event: FormEvent): void {
     event.preventDefault()
     const trimmed = text.trim()
@@ -186,7 +203,10 @@ function Line({
       )}
       {/* 「그때 그 가격」의 "더 비싸요" 같은 판정 한 줄. 본인에게만 의미가 있다 */}
       {line.note !== null && (
-        <span className="ml-1.5 text-xs font-semibold" style={{ color: 'var(--amber)' }}>
+        <span
+          className="ml-1.5 text-xs font-semibold"
+          style={{ color: line.note.includes('-') ? 'var(--red)' : 'var(--amber)' }}
+        >
           {line.note}
         </span>
       )}

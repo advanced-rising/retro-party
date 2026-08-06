@@ -19,12 +19,15 @@ export function ScoreNumber({ value, highlight }: { value: number; highlight: bo
   useEffect(() => {
     const delta = value - previous.current
     previous.current = value
-    if (delta <= 0) return
+    // 오른 것도 깎인 것도 보여준다. 깎였는데 조용하면 왜 줄었는지 모른다
+    if (delta === 0) return
 
     setGain({ amount: delta, at: Date.now() })
     const id = setTimeout(() => setGain(null), 900)
     return () => clearTimeout(id)
   }, [value])
+
+  const up = (gain?.amount ?? 0) > 0
 
   return (
     <span className="relative flex shrink-0 items-center">
@@ -33,21 +36,24 @@ export function ScoreNumber({ value, highlight }: { value: number; highlight: bo
           <m.span
             key={gain.at}
             className="tnum pointer-events-none absolute right-0 text-xs font-bold"
-            style={{ color: 'var(--lime)' }}
+            style={{ color: up ? 'var(--lime)' : 'var(--red)' }}
             initial={{ opacity: 0, y: 2 }}
-            animate={{ opacity: 1, y: -15 }}
-            exit={{ opacity: 0, y: -22 }}
+            animate={{ opacity: 1, y: up ? -15 : 15 }}
+            exit={{ opacity: 0, y: up ? -22 : 22 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
           >
-            +{gain.amount}
+            {up ? '+' : '−'}
+            {Math.abs(gain.amount)}
           </m.span>
         )}
       </AnimatePresence>
 
       <m.span
         className="tnum text-sm font-semibold"
-        style={{ color: highlight ? 'var(--gold)' : 'var(--text-lo)' }}
-        animate={{ scale: gain !== null && motionOk ? 1.15 : 1 }}
+        style={{
+          color: highlight ? 'var(--gold)' : value < 0 ? 'var(--red)' : 'var(--text-lo)',
+        }}
+        animate={{ scale: gain !== null && motionOk ? (up ? 1.15 : 0.9) : 1 }}
         transition={transitionFor(motionOk, SPRING_POP)}
       >
         {value.toLocaleString('ko-KR')}

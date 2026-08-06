@@ -2,8 +2,10 @@ import { asGameId, filterByTopics, type PlayerId } from '@retro/types'
 import {
   firstJungsung,
   normalizeAnswer,
+  escalatingPenalty,
   roundScore,
   syllableLength,
+  wrongCount,
   toChosung,
   type CreateRoundInput,
   type JudgeInput,
@@ -23,6 +25,12 @@ import { SAMPLE_WORDS, type ChosungWord } from './data.ts'
  */
 
 export const ROUND_MS = 20_000
+
+/**
+ * 오답 벌점 — 두 번까지는 봐준다.
+ * 20초짜리 게임이라 진지하게 쳐도 두어 번은 빗나간다.
+ */
+const PENALTY = { free: 2, step: 15, max: 60 } as const
 const HINT_AT_MS = 8_000
 const VOWEL_AT_MS = 14_000
 
@@ -97,7 +105,11 @@ export const chosungGame: RoomGame<ChosungQuestion, ChosungView> = {
       const attempt =
         toChosung(guess) === input.question.chosung ||
         syllableLength(guess) === input.question.length
-      return attempt ? { kind: 'wrong' } : { kind: 'ignored' }
+      if (!attempt) return { kind: 'ignored' }
+      return {
+        kind: 'wrong',
+        penalty: escalatingPenalty(wrongCount(input.round, input.playerId), PENALTY),
+      }
     }
 
     const rank = input.round.solved.length

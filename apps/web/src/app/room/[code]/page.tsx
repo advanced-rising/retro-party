@@ -187,10 +187,17 @@ function Room({
     view.participants.find((p) => p.playerId === presenterId)?.nickname ?? '출제자'
 
   return (
-    <main className="mx-auto flex h-dvh max-w-lg flex-col px-4 pb-2 pt-3">
+    /**
+     * 모바일은 한 칸, PC 는 두 칸.
+     *
+     * 좁은 화면에서는 문제 → 사람 → 채팅 순서로 쌓아야 엄지로 닿는 곳에
+     * 입력창이 온다. 넓은 화면에서 같은 배치를 쓰면 가운데 한 줄만 쓰고
+     * 양옆이 통째로 논다 — 그래서 문제와 대화를 좌우로 나눈다.
+     */
+    <main className="mx-auto flex h-dvh w-full max-w-lg flex-col px-4 pb-2 pt-3 lg:max-w-6xl lg:px-6">
       <InAppBanner />
 
-      <header className="flex items-center gap-2 pb-3">
+      <header className="flex flex-wrap items-center gap-2 pb-3">
         <button
           type="button"
           onClick={copy}
@@ -262,6 +269,9 @@ function Room({
         </button>
       </header>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-0 lg:flex-row lg:gap-6">
+        {/* 왼쪽 — 문제. 넓은 화면에서 더 많은 폭을 가져간다 */}
+        <div className="flex min-h-0 flex-col lg:flex-[1.5] lg:overflow-y-auto">
       {view.phase.kind === 'playing' && (
         <div className="flex items-center gap-2 pb-3">
           <div className="min-w-0 flex-1">
@@ -352,16 +362,6 @@ function Room({
         </div>
       )}
 
-      <div className="py-3">
-        <Roster
-          participants={view.participants}
-          scores={view.scores}
-          hostId={view.hostId}
-          you={view.you}
-          presenter={presenterId}
-        />
-      </div>
-
       {(view.phase.kind === 'lobby' || view.phase.kind === 'result') && (
         <div className="flex items-center gap-2 pb-3">
           <button
@@ -398,21 +398,36 @@ function Room({
           방 코드를 보내면 {needed}명부터 바로 시작할 수 있습니다
         </p>
       )}
+        </div>
 
-      <ChatPanel
-        lines={view.lines}
-        participants={view.participants}
-        you={view.you}
-        teamMode={teamMode}
-        disabled={!view.connected}
-        onSend={actions.send}
-      />
+        {/* 오른쪽 — 사람과 대화. 좁은 화면에서는 문제 아래로 내려온다 */}
+        <aside className="flex min-h-0 flex-1 flex-col lg:max-w-sm">
+          <div className="shrink-0 py-3 lg:pt-0">
+            <Roster
+              participants={view.participants}
+              scores={view.scores}
+              hostId={view.hostId}
+              you={view.you}
+              presenter={presenterId}
+            />
+          </div>
 
-      {view.error !== null && (
-        <p className="pb-1 text-center text-xs" style={{ color: 'var(--red)' }} role="alert">
-          {view.error}
-        </p>
-      )}
+          <ChatPanel
+            lines={view.lines}
+            participants={view.participants}
+            you={view.you}
+            teamMode={teamMode}
+            disabled={!view.connected}
+            onSend={actions.send}
+          />
+
+          {view.error !== null && (
+            <p className="pb-1 text-center text-xs" style={{ color: 'var(--red)' }} role="alert">
+              {view.error}
+            </p>
+          )}
+        </aside>
+      </div>
     </main>
   )
 }

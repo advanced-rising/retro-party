@@ -249,7 +249,7 @@ export function SketchBoard({
         {COLOR_LABEL[color]} · 굵기 {SKETCH_WIDTHS.indexOf(width) + 1}단계
       </p>
 
-      <div className="mt-1.5 flex w-full items-center gap-2">
+      <div className="mt-1.5 flex w-full flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           {SKETCH_COLORS.map((c) => (
             <button
@@ -309,23 +309,26 @@ export function SketchBoard({
           ))}
         </div>
 
+        {/* 손가락으로 누를 수 있는 크기로 키운다 */}
         <button
           type="button"
           onClick={() => onCanvas('undo')}
-          className="ml-auto rounded-md border p-1.5"
+          className="ml-auto flex size-9 items-center justify-center rounded-md border"
           style={{ background: 'var(--bg-elevated)', color: 'var(--text-lo)' }}
           aria-label="한 획 되돌리기"
+          title="되돌리기"
         >
-          <Undo2 size={14} aria-hidden />
+          <Undo2 size={15} aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => onCanvas('clear')}
-          className="rounded-md border p-1.5"
+          className="flex size-9 items-center justify-center rounded-md border"
           style={{ background: 'var(--bg-elevated)', color: 'var(--text-lo)' }}
           aria-label="모두 지우기"
+          title="모두 지우기"
         >
-          <Eraser size={14} aria-hidden />
+          <Eraser size={15} aria-hidden />
         </button>
       </div>
     </>
