@@ -132,40 +132,82 @@ AI 참가자 **없음**, Lv20 이상.
 **토큰을 바꾸면 반드시 검증한다**
 
 ```bash
-node tools/contrast.mjs     # 32건. 실패 시 exit 1
+pnpm contrast     # 32건. 실패 시 exit 1
 ```
 
 > 06 문서 §2
 
 ---
 
-## 3. 게임 모듈 인터페이스
+## 3. TypeScript — 타입은 필수다
+
+**모든 코드는 TypeScript.** `tsconfig.base.json` 을 상속하고, `strict` 만으로 부족한 것까지 켜져 있다.
+
+```
+noUncheckedIndexedAccess      arr[0] 은 T | undefined 다
+exactOptionalPropertyTypes    ?: T 에 undefined 를 못 넣는다
+noPropertyAccessFromIndexSignature   raw.type 대신 raw['type']
+noImplicitReturns · noFallthroughCasesInSwitch
+verbatimModuleSyntax          타입 import 는 `import type`
+```
+
+### 금지
+
+| 금지 | 대신 |
+|---|---|
+| `any` | `unknown` + 타입 가드 |
+| `as` 캐스팅 | 타입 가드 · 파서. **예외: 브랜디드 생성자(`asRoomId`)와 파서 내부뿐** |
+| `@ts-ignore` | `@ts-expect-error` + 사유 주석. 그것도 최후수단 |
+| 암묵적 `any` 파라미터 | 전부 명시 |
+| 신뢰 없는 입력을 타입 단언으로 받기 | `parseClientMessage()` 같은 **런타임 파서**를 통과시킨다 |
+
+### 규약
+
+- **브랜디드 ID를 쓴다.** `RoomId` / `PlayerId` / `MatchId` 는 전부 string 이지만 교환 불가다.
+  섞이는 사고를 컴파일 타임에 막는다 — `packages/types/src/ids.ts`
+- **상태·이벤트는 discriminated union.** `{ kind: 'lobby' } | { kind: 'playing'; roundNo: number }`
+  switch 에서 exhaustive 검사가 걸린다
+- **`readonly` 를 기본으로.** 게임 모듈이 순수 함수여야 하는 규칙(§1.6)과 맞물린다
+- **공개 API 는 반환 타입을 명시**한다. 추론에 맡기면 리팩터링 때 조용히 바뀐다
+- **import 에 `.ts` 확장자를 붙인다.** Node 24 `--experimental-strip-types` 로 빌드 없이 실행하기 위한 것
+  (`allowImportingTsExtensions` + `emitDeclarationOnly`)
+
+```bash
+pnpm typecheck      # tsc --build. 실패하면 머지 금지
+```
+
+---
+
+## 4. 게임 모듈 인터페이스
 
 새 게임은 `packages/games/{id}/` 에 파일 4개 + 레지스트리 한 줄. **DB 마이그레이션 없음.**
 
+실제 정의는 `packages/room-kit/src/game.ts`.
+
 ```ts
-export interface RoomGame<Question, Answer> {
-  id: string
-  meta: { name; minPlayers; maxPlayers; roundMs; hasPresenter }
+export interface RoomGame<Question, View> {
+  readonly id: GameId
+  readonly meta: GameMeta
 
-  // 순수 함수 — WebSocket·DO를 모른다
-  createRound(seed: string, roundNo: number, ctx: ContentCtx): Question
-  judge(q: Question, playerId: string, text: string, atMs: number): Judgement
-  isRoundOver(q: Question, state: RoundState): boolean
-  reveal(q: Question): RevealData
-  viewFor(q, state, playerId): PlayerView   // ★ 정답 누출 방지
-
-  Board: React.ComponentType<BoardProps>
+  createRound(input: CreateRoundInput): Question
+  judge(input: JudgeInput<Question>): Judgement
+  isRoundOver(question: Question, round: RoundState): boolean
+  reveal(question: Question): RevealData
+  viewFor(input: ViewInput<Question>): View   // ★ 정답 누출 방지
 }
 ```
 
-`judge` 가 **채팅 메시지를 그대로 받는다** — "채팅이 곧 정답 입력"이 인터페이스에 드러나 있다.
+- 인자를 **객체 하나로** 받는다. 파라미터가 늘어도 호출부가 안 깨진다
+- 시간(`atMs` · `nowMs`)과 난수(`rng`)는 **전부 주입**된다 — §1.6
+- `judge` 가 **채팅 원문을 그대로 받는다** — "채팅이 곧 정답 입력"이 인터페이스에 드러나 있다
+- `Judgement` 는 `ignored | wrong | partial | correct` discriminated union.
+  `ignored` 는 정답 후보가 아닌 잡담이고, 채팅에는 그대로 흐른다
 
 새 게임 체크리스트는 09 문서 §6.3.
 
 ---
 
-## 4. 문서 지도
+## 5. 문서 지도
 
 | 무엇을 할 때 | 어디를 |
 |---|---|
@@ -182,7 +224,7 @@ export interface RoomGame<Question, Answer> {
 
 ---
 
-## 5. 판단이 필요할 때
+## 6. 판단이 필요할 때
 
 문서에 없는 결정을 마주치면 **이 세 기준으로** 판단한다.
 

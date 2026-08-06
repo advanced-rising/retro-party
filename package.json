@@ -2,7 +2,14 @@
   "name": "retro-party",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": { "node": ">=22.6" },
   "scripts": {
-    "contrast": "node tools/contrast.mjs"
+    "contrast": "node --experimental-strip-types tools/contrast.ts",
+    "typecheck": "tsc --build",
+    "typecheck:clean": "tsc --build --clean && tsc --build"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
   }
 }
