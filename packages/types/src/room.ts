@@ -1,4 +1,5 @@
 import type { GameId, PlayerId, RoomCode, RoomId, Seed, TeamId } from './ids.ts'
+import type { TopicId } from './topic.ts'
 
 /** 방 정원. 8명이 기본이자 4:4 팀전의 완성형 — 01 문서 §2.1 */
 export const ROOM_CAPACITY = 8 as const
@@ -65,6 +66,8 @@ export interface RoomSettings {
   /** 방 목록에 띄울지. 끄면 코드로만 들어온다 */
   readonly isPublic: boolean
   readonly title: string
+  /** 고른 주제. 비어 있으면 전체 — 03 문서의 뭉치기와 충돌하지 않게 기본은 전체다 */
+  readonly topics: readonly TopicId[]
 }
 
 export interface RoomState {

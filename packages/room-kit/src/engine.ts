@@ -36,8 +36,20 @@ export const PRESENTER_IDLE_MS = 20_000
 export type Effect =
   | { readonly kind: 'broadcast'; readonly message: ServerMessage }
   | { readonly kind: 'send'; readonly to: PlayerId; readonly message: ServerMessage }
-  /** 채팅은 수신자별로 걸러야 한다. senderTeam 을 들려 보낸다 — 01 문서 §6.5.2 */
-  | { readonly kind: 'chat'; readonly line: ChatLine; readonly senderTeam: TeamId | null }
+  /**
+   * 채팅은 수신자별로 다르게 나간다.
+   *   · senderTeam — 팀 채널이 상대 팀에 새지 않게 (01 문서 §6.5.2)
+   *   · revealTo   — ★ 정답 원문을 볼 수 있는 사람. null 이면 전원
+   *
+   * revealTo 가 없으면 먼저 맞힌 사람의 답이 채팅에 그대로 떠서
+   * 나머지가 그대로 베낀다. 게임이 성립하지 않는다.
+   */
+  | {
+      readonly kind: 'chat'
+      readonly line: ChatLine
+      readonly senderTeam: TeamId | null
+      readonly revealTo: readonly PlayerId[] | null
+    }
   /** 이 시각에 tick() 을 다시 불러 달라 */
   | { readonly kind: 'alarm'; readonly atMs: number }
   | { readonly kind: 'matchOver'; readonly ranking: readonly PlayerId[] }
@@ -191,6 +203,7 @@ export function createEngine<Question, View>(
       roundNo,
       rng: createRng(deriveSeed(room.seed, 'q', roundNo)),
       pool: init.pool,
+      topics: room.settings.topics,
       presenter,
     })
     round = emptyRound({
@@ -343,7 +356,10 @@ export function createEngine<Question, View>(
     if (round !== null && round.presenter === playerId) presenterSpokeAtMs = nowMs
 
     const line: ChatLine = { from: playerId, text: clean.text, channel, correct, note }
-    effects.unshift({ kind: 'chat', line, senderTeam: teamOf(playerId) })
+    // 정답을 맞힌 줄은 이미 맞힌 사람에게만 원문이 간다. 나머지는 가려진 걸 본다
+    const revealTo =
+      correct === null || round === null ? null : [...round.solved, playerId]
+    effects.unshift({ kind: 'chat', line, senderTeam: teamOf(playerId), revealTo })
 
     if (correct !== null && question !== null && round !== null) {
       if (game.isRoundOver(question, round)) {
@@ -564,4 +580,22 @@ export function createEngine<Question, View>(
 export function shouldDeliver(effect: Effect, receiverTeam: TeamId | null): boolean {
   if (effect.kind !== 'chat') return true
   return canReceive(effect.line.channel, effect.senderTeam, receiverTeam)
+}
+
+/** 아직 못 맞힌 사람에게 보여줄 가림 문자 */
+export const MASKED_ANSWER = '***'
+
+/**
+ * ★ 이 수신자가 실제로 받을 채팅 줄.
+ *
+ * 정답 줄은 **이미 맞힌 사람에게만** 원문이 간다. 나머지는 `***` 를 본다 —
+ * 「맞혔다」는 사실만 공유되고 답 자체는 공유되지 않는다.
+ * 이 함수를 거치지 않고 effect.line 을 그대로 보내면 정답이 새어 나간다.
+ */
+export function lineFor(
+  effect: Extract<Effect, { kind: 'chat' }>,
+  viewer: PlayerId,
+): ChatLine {
+  if (effect.revealTo === null || effect.revealTo.includes(viewer)) return effect.line
+  return { ...effect.line, text: MASKED_ANSWER }
 }

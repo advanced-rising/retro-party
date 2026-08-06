@@ -1,4 +1,4 @@
-import type { GameId, PlayerId, Seed, TeamId } from '@retro/types'
+import type { GameId, PlayerId, Seed, TeamId, TopicId } from '@retro/types'
 import type { Rng } from './rng.ts'
 
 /**
@@ -57,6 +57,8 @@ export interface CreateRoundInput {
   readonly roundNo: number
   readonly rng: Rng
   readonly pool: ContentPool
+  /** 방에서 고른 주제. 비어 있으면 전체 — filterByTopics 를 그대로 쓰면 된다 */
+  readonly topics: readonly TopicId[]
   /** 출제자가 있는 게임에서만. 없으면 null */
   readonly presenter: PlayerId | null
 }

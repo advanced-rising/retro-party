@@ -12,9 +12,16 @@ import { listableRooms, pickQuickJoin, ROOM_STALE_MS, type RoomSummary } from '@
 
 const STORAGE_KEY = 'rooms'
 
+/** 신고 폭주 방어 — 한 번에 최대 5건, 20초마다 1건씩 회복 */
+const REPORT_BURST = 5
+const REPORT_REFILL_MS = 20_000
+
 export class LobbyDO implements DurableObject {
   private rooms = new Map<string, RoomSummary>()
   private loaded = false
+  /** 신고 토큰 버킷. 폭주하면 웹훅이 막히고 진짜 신고가 묻힌다 */
+  private reportTokens = REPORT_BURST
+  private reportRefilledAtMs = 0
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -26,6 +33,22 @@ export class LobbyDO implements DurableObject {
     const saved = await this.ctx.storage.get<readonly RoomSummary[]>(STORAGE_KEY)
     for (const room of saved ?? []) this.rooms.set(room.code, room)
     this.loaded = true
+  }
+
+  /**
+   * 신고 토큰을 하나 꺼낸다. 없으면 거절한다.
+   * 사람이 손으로 누르는 기능이라 이 정도면 충분하고, 스크립트 폭주는 막힌다.
+   */
+  private takeReportToken(nowMs: number): boolean {
+    const elapsed = nowMs - this.reportRefilledAtMs
+    if (elapsed >= REPORT_REFILL_MS) {
+      const refill = Math.floor(elapsed / REPORT_REFILL_MS)
+      this.reportTokens = Math.min(REPORT_BURST, this.reportTokens + refill)
+      this.reportRefilledAtMs = nowMs
+    }
+    if (this.reportTokens <= 0) return false
+    this.reportTokens -= 1
+    return true
   }
 
   /** 죽은 방을 걷어낸다. 방이 알림 없이 사라지는 경우가 항상 있다 */
@@ -44,6 +67,11 @@ export class LobbyDO implements DurableObject {
     const url = new URL(request.url)
     const nowMs = Date.now()
     this.sweep(nowMs)
+
+    // 신고 속도 제한. 싱글턴이라 여기서만 셀 수 있다
+    if (url.pathname === '/report-quota' && request.method === 'POST') {
+      return Response.json({ allowed: this.takeReportToken(nowMs) })
+    }
 
     // RoomDO 가 자기 상태를 알려온다
     if (url.pathname === '/report' && request.method === 'POST') {

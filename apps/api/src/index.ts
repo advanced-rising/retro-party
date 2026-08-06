@@ -1,5 +1,6 @@
 import { parseRoomCode, ROOM_CAPACITY, type RoomCode } from '@retro/types'
 import { listGames } from './registry.ts'
+import { buildEmbed, parseReport, sendToDiscord } from './report.ts'
 
 export { RoomDO } from './room-do.ts'
 export { LobbyDO } from './lobby-do.ts'
@@ -44,6 +45,27 @@ export default {
 
     // 고를 수 있는 게임 목록
     if (url.pathname === '/api/games') return json({ games: listGames() })
+
+    /**
+     * 문항 신고. 기계 검증은 형식만 잡고, 사실이 틀렸는지는 플레이하는 사람이 안다.
+     * 웹훅 주소는 서버 환경변수에만 있다 — 클라이언트로 내보내지 않는다
+     */
+    if (url.pathname === '/api/report' && request.method === 'POST') {
+      const report = parseReport(await request.json().catch(() => null))
+      if (report === null) return json({ error: '신고 내용이 올바르지 않습니다' }, 400)
+
+      const quota = await lobbyOf(env).fetch('https://lobby/report-quota', { method: 'POST' })
+      const allowed = ((await quota.json()) as { allowed?: boolean }).allowed === true
+      if (!allowed) return json({ error: '신고가 너무 잦습니다. 잠시 후 다시 시도해 주세요' }, 429)
+
+      const webhook = env.DISCORD_WEBHOOK_URL
+      if (webhook === undefined || webhook.length === 0) {
+        return json({ error: '신고 채널이 설정되지 않았습니다' }, 503)
+      }
+
+      const sent = await sendToDiscord(webhook, buildEmbed(report, new Date().toISOString()))
+      return sent ? json({ ok: true }) : json({ error: '신고를 보내지 못했습니다' }, 502)
+    }
 
     // 방 목록 — 사람 수 내림차순, 빈 방은 안 나온다 (03 문서 §4.2)
     if (url.pathname === '/api/rooms' && request.method === 'GET') {

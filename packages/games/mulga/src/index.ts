@@ -1,4 +1,4 @@
-import { asGameId } from '@retro/types'
+import { asGameId, filterByTopics } from '@retro/types'
 import {
   roundScore,
   type CreateRoundInput,
@@ -100,11 +100,11 @@ export const mulgaGame: RoomGame<MulgaQuestion, MulgaView> = {
   },
 
   createRound(input: CreateRoundInput): MulgaQuestion {
-    const pool = input.pool.items.length > 0 ? (input.pool.items as readonly PriceEntry[]) : null
-    const entry =
-      pool !== null && pool.length > 0
-        ? (pool[input.rng.int(pool.length)] as PriceEntry)
-        : input.rng.pick(SAMPLE_PRICES)
+    // 콘텐츠 풀이 비어 있으면 샘플로 떨어진다. 그 다음 고른 주제로 좁힌다
+    const source =
+      input.pool.items.length > 0 ? (input.pool.items as readonly PriceEntry[]) : SAMPLE_PRICES
+    const picked = filterByTopics(source, input.topics)
+    const entry = picked[input.rng.int(picked.length)] ?? SAMPLE_PRICES[0]
     return buildQuestion(entry)
   },
 

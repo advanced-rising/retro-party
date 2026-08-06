@@ -22,6 +22,7 @@ function makeQuestion(seed = 'seed-1', roundNo = 0): GeuhaeQuestion {
     roundNo,
     rng: createRng(asSeed(`${seed}:${roundNo}`)),
     pool: EMPTY_POOL,
+    topics: [],
     presenter: null,
   })
 }
@@ -67,14 +68,16 @@ test('아직 안 열린 힌트는 뷰에 담기지 않는다', () => {
   }
 })
 
-test('다음 힌트까지 남은 시간을 알려준다', () => {
+test('다음 힌트가 열리는 시각을 절대 시각으로 알려준다', () => {
   const question = makeQuestion('countdown')
   const at = (nowMs: number) =>
     geuhaeGame.viewFor({ question, round: freshRound(), playerId: P1, team: null, nowMs })
 
-  assert.equal(at(0).nextHintInMs, HINT_INTERVAL_MS)
-  assert.equal(at(3_000).nextHintInMs, HINT_INTERVAL_MS - 3_000)
-  assert.equal(at(ROUND_MS).nextHintInMs, null, '더 열릴 게 없으면 null')
+  // 라운드는 0ms 에 시작했으므로 첫 힌트는 8초, 그 다음은 16초에 열린다
+  assert.equal(at(0).nextHintAtMs, HINT_INTERVAL_MS)
+  assert.equal(at(3_000).nextHintAtMs, HINT_INTERVAL_MS, '시간이 흘러도 같은 시각을 가리킨다')
+  assert.equal(at(HINT_INTERVAL_MS).nextHintAtMs, HINT_INTERVAL_MS * 2)
+  assert.equal(at(ROUND_MS).nextHintAtMs, null, '더 열릴 게 없으면 null')
 })
 
 // ── 연도 파싱 ───────────────────────────────────────

@@ -1,4 +1,4 @@
-import { asGameId } from '@retro/types'
+import { asGameId, filterByTopics } from '@retro/types'
 import {
   roundScore,
   type CreateRoundInput,
@@ -43,8 +43,13 @@ export interface GeuhaeView {
   /** 지금까지 열린 힌트만 */
   readonly hints: readonly string[]
   readonly totalHints: number
-  /** 다음 힌트까지 남은 ms. 더 열릴 게 없으면 null */
-  readonly nextHintInMs: number | null
+  /**
+   * 다음 힌트가 열리는 **절대 시각**. 더 열릴 게 없으면 null.
+   *
+   * 남은 시간(ms)을 보내면 board 를 밀어주는 주기(1초)에 묶여 카운트다운이
+   * 툭툭 끊긴다. 절대 시각을 주면 클라이언트가 자기 시계로 매끄럽게 센다.
+   */
+  readonly nextHintAtMs: number | null
   readonly solvedCount: number
   readonly youSolved: boolean
   /** 이미 ±1년 점수를 받았는가. 받았으면 더 안 준다 */
@@ -96,11 +101,11 @@ export const geuhaeGame: RoomGame<GeuhaeQuestion, GeuhaeView> = {
   },
 
   createRound(input: CreateRoundInput): GeuhaeQuestion {
-    const pool = input.pool.items.length > 0 ? (input.pool.items as readonly YearEntry[]) : null
-    const entry =
-      pool !== null && pool.length > 0
-        ? (pool[input.rng.int(pool.length)] as YearEntry)
-        : input.rng.pick(SAMPLE_YEARS)
+    // 콘텐츠 풀이 비어 있으면 샘플로 떨어진다. 그 다음 고른 주제로 좁힌다
+    const source =
+      input.pool.items.length > 0 ? (input.pool.items as readonly YearEntry[]) : SAMPLE_YEARS
+    const picked = filterByTopics(source, input.topics)
+    const entry = picked[input.rng.int(picked.length)] ?? SAMPLE_YEARS[0]
     return buildQuestion(entry)
   },
 
@@ -150,12 +155,14 @@ export const geuhaeGame: RoomGame<GeuhaeQuestion, GeuhaeView> = {
   viewFor(input: ViewInput<GeuhaeQuestion>): GeuhaeView {
     const elapsedMs = input.nowMs - input.round.startedAtMs
     const opened = openHintCount(elapsedMs)
-    const nextAtMs = opened * HINT_INTERVAL_MS
 
     return {
       hints: input.question.hints.slice(0, opened),
       totalHints: input.question.hints.length,
-      nextHintInMs: opened >= input.question.hints.length ? null : Math.max(0, nextAtMs - elapsedMs),
+      nextHintAtMs:
+        opened >= input.question.hints.length
+          ? null
+          : input.round.startedAtMs + opened * HINT_INTERVAL_MS,
       solvedCount: input.round.solved.length,
       youSolved: input.round.solved.includes(input.playerId),
       usedNear: input.round.partials.includes(input.playerId),

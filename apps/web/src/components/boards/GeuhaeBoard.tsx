@@ -1,7 +1,13 @@
+'use client'
+
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+
 export interface GeuhaeView {
   readonly hints: readonly string[]
   readonly totalHints: number
-  readonly nextHintInMs: number | null
+  /** 다음 힌트가 열리는 절대 시각. 없으면 null */
+  readonly nextHintAtMs: number | null
   readonly solvedCount: number
   readonly youSolved: boolean
   readonly usedNear: boolean
@@ -12,9 +18,13 @@ export const isGeuhaeView = (v: unknown): v is GeuhaeView =>
 
 /**
  * 힌트는 어려운 것부터 열린다. 일찍 맞힐수록 점수가 높다 — 02 문서 §1.1
- * 아직 안 열린 자리를 점으로 보여줘야 "곧 하나 더 열린다"가 전달된다.
+ *
+ * 카운트다운은 서버가 준 **절대 시각**을 기준으로 클라이언트가 직접 센다.
+ * 서버가 밀어주는 주기(1초)에 묶으면 숫자가 툭툭 끊겨서 안 보인다.
  */
 export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
+  const remain = useCountdown(view.nextHintAtMs)
+
   return (
     <>
       <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--text-dim)' }}>
@@ -22,31 +32,44 @@ export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
       </p>
 
       <ol className="mt-3 w-full space-y-1.5 text-left">
-        {view.hints.map((hint, i) => (
-          <li key={hint} className="flex gap-2.5 text-sm" style={{ color: 'var(--text)' }}>
-            <span className="tnum shrink-0 font-semibold" style={{ color: 'var(--text-dim)' }}>
-              {i + 1}
-            </span>
-            {hint}
-          </li>
-        ))}
+        <AnimatePresence initial={false}>
+          {view.hints.map((hint, i) => (
+            <motion.li
+              key={hint}
+              layout
+              initial={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              className="flex gap-2.5 text-sm"
+              style={{ color: 'var(--text)' }}
+            >
+              <span className="tnum shrink-0 font-semibold" style={{ color: 'var(--text-dim)' }}>
+                {i + 1}
+              </span>
+              {hint}
+            </motion.li>
+          ))}
+        </AnimatePresence>
       </ol>
 
       <div className="mt-4 flex items-center justify-center gap-3">
         <span className="flex gap-1" aria-label={`힌트 ${view.hints.length}/${view.totalHints}`}>
           {Array.from({ length: view.totalHints }, (_, i) => (
-            <span
+            <motion.span
               key={i}
               className="h-1.5 w-1.5 rounded-full"
-              style={{
-                background: i < view.hints.length ? 'var(--lime)' : 'var(--border)',
+              animate={{
+                backgroundColor: i < view.hints.length ? 'var(--lime)' : 'var(--border)',
+                scale: i === view.hints.length - 1 ? [1, 1.6, 1] : 1,
               }}
+              transition={{ duration: 0.4 }}
             />
           ))}
         </span>
-        {view.nextHintInMs !== null && (
+
+        {remain !== null && (
           <span className="tnum text-xs" style={{ color: 'var(--text-dim)' }}>
-            다음 힌트 {Math.ceil(view.nextHintInMs / 1000)}초
+            다음 힌트 {remain}초
           </span>
         )}
       </div>
@@ -58,4 +81,18 @@ export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
       )}
     </>
   )
+}
+
+/** 절대 시각까지 남은 초. 자기 시계로 세므로 서버 주기와 무관하다 */
+function useCountdown(targetMs: number | null): number | null {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (targetMs === null) return
+    const id = setInterval(() => setNow(Date.now()), 200)
+    return () => clearInterval(id)
+  }, [targetMs])
+
+  if (targetMs === null) return null
+  return Math.max(0, Math.ceil((targetMs - now) / 1000))
 }

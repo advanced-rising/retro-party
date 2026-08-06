@@ -14,6 +14,7 @@ function makeQuestion(seed = 'seed-1', roundNo = 0): ChosungQuestion {
     roundNo,
     rng: createRng(asSeed(`${seed}:${roundNo}`)),
     pool: EMPTY_POOL,
+    topics: [],
     presenter: null,
   })
 }

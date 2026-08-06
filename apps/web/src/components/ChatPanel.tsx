@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { motion } from 'motion/react'
 import { SendHorizontal } from 'lucide-react'
 import { EMOTES, MAX_CHAT_LENGTH, type ChatChannel, type ChatLine, type Participant, type PlayerId } from '@retro/types'
 
@@ -155,12 +156,15 @@ function Line({
     team === 0 ? 'var(--blue)' : team === 1 ? 'var(--red)' : mine ? 'var(--text-hi)' : 'var(--text-lo)'
 
   return (
-    <p
+    <motion.p
       className="rounded-md px-2 py-1 text-sm leading-relaxed"
       style={{
         background: correct ? 'var(--lime-wash)' : 'transparent',
         color: correct ? 'var(--lime)' : 'var(--text)',
       }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
       aria-live={correct ? 'assertive' : 'off'}
     >
       {line.channel === 'team' && (
@@ -181,6 +185,6 @@ function Line({
           {line.note}
         </span>
       )}
-    </p>
+    </motion.p>
   )
 }

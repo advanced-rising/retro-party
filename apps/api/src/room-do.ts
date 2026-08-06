@@ -3,6 +3,7 @@ import {
   asRoomId,
   asSeed,
   parseClientMessage,
+  parseTopics,
   ROOM_CAPACITY,
   type Participant,
   type PlayerId,
@@ -12,7 +13,14 @@ import {
   type ServerMessage,
   type TeamId,
 } from '@retro/types'
-import { createEngine, normalizeRoomTitle, shouldDeliver, type Effect, type Engine } from '@retro/room-kit'
+import {
+  createEngine,
+  lineFor,
+  normalizeRoomTitle,
+  shouldDeliver,
+  type Effect,
+  type Engine,
+} from '@retro/room-kit'
 import {
   hashPassword,
   newTicket,
@@ -82,6 +90,7 @@ export class RoomDO implements DurableObject {
       teamSize: null,
       isPublic: true,
       title: '새 방',
+      topics: [],
     }
     this.game = resolveGame(settings.gameId)
 
@@ -227,13 +236,14 @@ export class RoomDO implements DurableObject {
     const mode = parseMode(input['mode'])
     const rounds = clampRounds(input['rounds'])
     const isPublic = input['isPublic'] !== false
+    const topics = parseTopics(input['topics'])
 
     const password = normalizePassword(input['password'])
     if (password !== null) {
       await this.ctx.storage.put<PasswordHash>(AUTH_KEY, await hashPassword(password))
     }
 
-    engine.settingsUnchecked({ gameId, mode, rounds, isPublic, title })
+    engine.settingsUnchecked({ gameId, mode, rounds, isPublic, title, topics })
     engine.setLocked(password !== null)
     await this.persist()
 
@@ -419,13 +429,16 @@ export class RoomDO implements DurableObject {
           break
 
         case 'chat': {
-          // ★ 팀 채널은 같은 팀에게만. 여기가 새면 팀전이 통째로 무너진다
-          const message: ServerMessage = { type: 'chat', line: effect.line }
+          // ★ 두 가지를 수신자마다 다르게 처리한다.
+          //   1. 팀 채널은 같은 팀에게만 — 새면 팀전이 무너진다
+          //   2. 정답 원문은 이미 맞힌 사람에게만 — 새면 나머지가 베낀다
           for (const ws of this.ctx.getWebSockets()) {
             const attachment = this.attachmentOf(ws)
             if (attachment === null) continue
-            const team = this.teamOf(asPlayerId(attachment.playerId))
-            if (shouldDeliver(effect, team)) this.send(ws, message)
+            const viewer = asPlayerId(attachment.playerId)
+            if (!shouldDeliver(effect, this.teamOf(viewer))) continue
+            const message: ServerMessage = { type: 'chat', line: lineFor(effect, viewer) }
+            this.send(ws, message)
           }
           break
         }

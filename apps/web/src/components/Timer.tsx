@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 /**
@@ -31,20 +32,23 @@ export function Timer({ endsAtMs, totalMs }: { endsAtMs: number; totalMs: number
         aria-valuemax={Math.ceil(totalMs / 1000)}
         aria-label="남은 시간"
       >
-        <div
-          className="h-full rounded-full transition-[width] duration-100 ease-linear"
-          style={{
+        <motion.div
+          className="h-full rounded-full"
+          animate={{
             width: `${ratio * 100}%`,
-            background: urgent ? 'var(--amber)' : 'var(--lime)',
+            backgroundColor: urgent ? 'var(--amber)' : 'var(--lime)',
           }}
+          transition={{ duration: 0.15, ease: 'linear' }}
         />
       </div>
-      <span
+      <motion.span
         className="tnum w-8 text-right text-sm font-semibold"
         style={{ color: urgent ? 'var(--amber)' : 'var(--text-lo)' }}
+        animate={urgent ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+        transition={urgent ? { duration: 1, repeat: Infinity } : { duration: 0.2 }}
       >
         {Math.ceil(remain / 1000)}
-      </span>
+      </motion.span>
     </div>
   )
 }

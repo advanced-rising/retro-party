@@ -22,5 +22,11 @@ new_sqlite_classes = ["RoomDO"]
 tag = "v2"
 new_sqlite_classes = ["LobbyDO"]
 
+[vars]
+# 문항 신고가 도착할 Discord 웹훅.
+# 클라이언트 번들에는 절대 들어가지 않는다 — 서버에서만 읽는다.
+# 운영에서는 `wrangler secret put DISCORD_WEBHOOK_URL` 로 덮어쓰는 편이 낫다.
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1534824132540104795/6OVmKhV3daeWB5XfkKwmr0yZQNbNsxuGA9fqjz0jpx8MFh_O1qYcN0-Y3UdLInCPRfjM"
+
 [observability]
 enabled = true

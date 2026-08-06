@@ -46,6 +46,7 @@ const snapshot: ServerMessage = {
     teamSize: null,
     isPublic: true,
     title: '테스트 방',
+    topics: [],
   },
   participants: [player('a'), player('b')],
   scores: [

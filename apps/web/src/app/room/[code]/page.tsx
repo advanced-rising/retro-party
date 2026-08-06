@@ -1,7 +1,8 @@
 'use client'
 
 import { use, useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Copy, Lock, Users, WifiOff } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Copy, LogOut, Lock, Users, WifiOff } from 'lucide-react'
 import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
@@ -120,6 +121,7 @@ function Room({
   identity: { playerId: string; nickname: string }
   ticket: string | null
 }) {
+  const router = useRouter()
   const [view, actions] = useRoomSocket(
     API_BASE,
     code,
@@ -193,6 +195,18 @@ function Room({
             {here}/{ROOM_CAPACITY}
           </span>
         </span>
+
+        {/* 나가기. 소켓이 닫히면 서버가 알아서 정리한다 (engine.leave) */}
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="shrink-0 rounded-lg border p-1.5"
+          style={{ background: 'var(--bg-elevated)', color: 'var(--text-lo)' }}
+          aria-label="방 나가기"
+          title="방 나가기"
+        >
+          <LogOut size={14} aria-hidden />
+        </button>
       </header>
 
       {view.phase.kind === 'playing' && (
@@ -201,7 +215,13 @@ function Room({
         </div>
       )}
 
-      <Board board={view.board} phase={view.phase} presenterName={presenterName} />
+      <Board
+        board={view.board}
+        phase={view.phase}
+        presenterName={presenterName}
+        gameId={view.settings?.gameId ?? ''}
+        roomCode={code}
+      />
 
       <div className="py-3">
         <Roster

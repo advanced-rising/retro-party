@@ -51,6 +51,7 @@ function makeEngine(names: readonly string[] = ['a', 'b']): Engine<ChosungQuesti
       teamSize: null,
       isPublic: true,
       title: '초성 테스트',
+      topics: [],
     },
     phase: { kind: 'lobby' },
     participants: [],

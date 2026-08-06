@@ -11,7 +11,15 @@ import {
   type RoomState,
   type TeamId,
 } from '@retro/types'
-import { createEngine, shouldDeliver, COUNTDOWN_MS, REVEAL_MS, type Effect } from './engine.ts'
+import {
+  createEngine,
+  lineFor,
+  shouldDeliver,
+  COUNTDOWN_MS,
+  MASKED_ANSWER,
+  REVEAL_MS,
+  type Effect,
+} from './engine.ts'
 import type { ContentPool, RoomGame, RoundState } from './game.ts'
 import { roundScore } from './scoring.ts'
 
@@ -72,7 +80,7 @@ function makeRoom(hostId: string, mode: RoomMode, rounds: number): RoomState {
     code: 'ABCDEF' as RoomCode,
     seed: asSeed('seed-room-1'),
     hostId: asPlayerId(hostId),
-    settings: { gameId: fakeGame.id, mode, rounds, teamSize: null, isPublic: true, title: '테스트 방' },
+    settings: { gameId: fakeGame.id, mode, rounds, teamSize: null, isPublic: true, title: '테스트 방', topics: [] },
     phase: { kind: 'lobby' },
     participants: [],
     scores: new Map(),
@@ -112,12 +120,17 @@ test('진행 중 어떤 Effect 에도 정답이 실리지 않는다', () => {
 
 test('팀 채널은 같은 팀에게만 간다', () => {
   const line = { from: P('a'), text: ANSWER, channel: 'team' as const, correct: null, note: null }
-  const effect: Effect = { kind: 'chat', line, senderTeam: 0 }
+  const effect: Effect = { kind: 'chat', line, senderTeam: 0, revealTo: null }
 
   assert.equal(shouldDeliver(effect, 0), true, '같은 팀은 받는다')
   assert.equal(shouldDeliver(effect, 1), false, '상대 팀은 받으면 안 된다')
 
-  const allChannel: Effect = { kind: 'chat', line: { ...line, channel: 'all' }, senderTeam: 0 }
+  const allChannel: Effect = {
+    kind: 'chat',
+    line: { ...line, channel: 'all' },
+    senderTeam: 0,
+    revealTo: null,
+  }
   assert.equal(shouldDeliver(allChannel, 1), true, '전체 채널은 모두 받는다')
 })
 
@@ -133,6 +146,70 @@ test('팀전에서 전체 채널에 답을 쳐도 점수가 들어가지 않는�
 
   engine.chat({ playerId: P('b'), text: ANSWER, channel: 'team', nowMs: nowMs + 2_000 })
   assert.ok((engine.state.room.scores.get(P('b')) ?? 0) > 0, '팀 채널 정답은 점수가 들어간다')
+})
+
+// ── ★ 정답 원문 가리기 ──────────────────────────────
+
+test('먼저 맞힌 사람의 답이 나머지에게 그대로 보이면 안 된다', () => {
+  const engine = makeEngine('casual', ['a', 'b', 'c'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  const effects = engine.chat({
+    playerId: P('a'),
+    text: ANSWER,
+    channel: 'all',
+    nowMs: COUNTDOWN_MS + 500,
+  })
+  const chat = effects.find((e) => e.kind === 'chat')
+  assert.ok(chat !== undefined && chat.kind === 'chat')
+  if (chat === undefined || chat.kind !== 'chat') return
+
+  // 맞힌 본인은 자기가 뭘 쳤는지 본다
+  assert.equal(lineFor(chat, P('a')).text, ANSWER, '본인은 원문을 본다')
+
+  // 아직 못 맞힌 사람에게는 가려진다 — 안 그러면 그대로 베낀다
+  assert.equal(lineFor(chat, P('b')).text, MASKED_ANSWER, '★ 아직 못 맞힌 사람은 못 본다')
+  assert.equal(lineFor(chat, P('c')).text, MASKED_ANSWER)
+
+  // 「맞혔다」는 사실 자체는 공유된다
+  assert.ok(lineFor(chat, P('b')).correct !== null, '맞혔다는 것은 보여야 한다')
+})
+
+test('이미 맞힌 사람끼리는 서로의 답을 본다', () => {
+  const engine = makeEngine('casual', ['a', 'b', 'c'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+  engine.chat({ playerId: P('a'), text: ANSWER, channel: 'all', nowMs: COUNTDOWN_MS + 500 })
+
+  const second = engine.chat({
+    playerId: P('b'),
+    text: ANSWER,
+    channel: 'all',
+    nowMs: COUNTDOWN_MS + 2_000,
+  })
+  const chat = second.find((e) => e.kind === 'chat')
+  if (chat === undefined || chat.kind !== 'chat') throw new Error('chat effect 가 없다')
+
+  assert.equal(lineFor(chat, P('a')).text, ANSWER, '먼저 맞힌 사람은 볼 수 있다')
+  assert.equal(lineFor(chat, P('c')).text, MASKED_ANSWER, '아직 못 맞힌 사람은 못 본다')
+})
+
+test('오답과 잡담은 가리지 않는다', () => {
+  const engine = makeEngine('casual', ['a', 'b'], 2)
+  engine.start(P('a'), 0)
+  engine.tick(COUNTDOWN_MS)
+
+  const effects = engine.chat({
+    playerId: P('a'),
+    text: '아 이게 뭐였지',
+    channel: 'all',
+    nowMs: COUNTDOWN_MS + 500,
+  })
+  const chat = effects.find((e) => e.kind === 'chat')
+  if (chat === undefined || chat.kind !== 'chat') throw new Error('chat effect 가 없다')
+  assert.equal(chat.revealTo, null, '정답이 아니면 전원이 원문을 본다')
+  assert.equal(lineFor(chat, P('b')).text, '아 이게 뭐였지')
 })
 
 // ── 팀 편성 ─────────────────────────────────────────

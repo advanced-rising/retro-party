@@ -12,7 +12,8 @@
     "typecheck:clean": "tsc --build --clean && tsc --build",
     "test": "node --experimental-strip-types --test 'packages/**/src/**/*.test.ts' 'apps/web/src/lib/*.test.ts'",
     "smoke": "node --experimental-strip-types tools/smoke.ts",
-    "bots": "node --experimental-strip-types tools/bots.ts"
+    "bots": "node --experimental-strip-types tools/bots.ts",
+    "content": "node --experimental-strip-types tools/content.ts"
   },
   "devDependencies": {
     "@types/node": "22",

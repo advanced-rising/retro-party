@@ -1,3 +1,4 @@
+import type { TopicId } from '@retro/types'
 import type { NonEmptyArray } from '@retro/room-kit'
 
 /**
@@ -16,6 +17,7 @@ import type { NonEmptyArray } from '@retro/room-kit'
 
 export interface PriceEntry {
   readonly item: string
+  readonly topic: TopicId
   readonly year: number
   readonly price: number
   readonly unit: string
@@ -28,6 +30,7 @@ export interface PriceEntry {
 export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   {
     item: '자장면 한 그릇',
+    topic: 'daily',
     year: 1990,
     price: 1100,
     unit: '원',
@@ -36,6 +39,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '자장면 한 그릇',
+    topic: 'daily',
     year: 2000,
     price: 2900,
     unit: '원',
@@ -44,6 +48,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '서울 지하철 기본요금',
+    topic: 'society',
     year: 1990,
     price: 250,
     unit: '원',
@@ -52,6 +57,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '서울 지하철 기본요금',
+    topic: 'society',
     year: 2000,
     price: 500,
     unit: '원',
@@ -60,6 +66,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '서울 지하철 기본요금',
+    topic: 'society',
     year: 2015,
     price: 1250,
     unit: '원',
@@ -68,6 +75,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '최저임금 시급',
+    topic: 'economy',
     year: 1997,
     price: 1485,
     unit: '원',
@@ -76,6 +84,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '최저임금 시급',
+    topic: 'economy',
     year: 2005,
     price: 2840,
     unit: '원',
@@ -84,6 +93,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '최저임금 시급',
+    topic: 'economy',
     year: 2015,
     price: 5580,
     unit: '원',
@@ -92,6 +102,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '최저임금 시급',
+    topic: 'economy',
     year: 2020,
     price: 8590,
     unit: '원',
@@ -100,6 +111,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '시내버스 요금',
+    topic: 'society',
     year: 1995,
     price: 400,
     unit: '원',
@@ -108,6 +120,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '편지 우표 한 장',
+    topic: 'society',
     year: 1995,
     price: 130,
     unit: '원',
@@ -116,6 +129,7 @@ export const SAMPLE_PRICES: NonEmptyArray<PriceEntry> = [
   },
   {
     item: '편지 우표 한 장',
+    topic: 'society',
     year: 2010,
     price: 250,
     unit: '원',

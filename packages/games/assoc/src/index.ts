@@ -1,4 +1,4 @@
-import { asGameId, type PlayerId } from '@retro/types'
+import { asGameId, filterByTopics, type PlayerId } from '@retro/types'
 import {
   normalizeAnswer,
   roundScore,
@@ -123,11 +123,10 @@ export const assocGame: RoomGame<AssocQuestion, AssocView> = {
   },
 
   createRound(input: CreateRoundInput): AssocQuestion {
-    const pool = input.pool.items.length > 0 ? (input.pool.items as readonly AssocWord[]) : null
-    const entry =
-      pool !== null && pool.length > 0
-        ? (pool[input.rng.int(pool.length)] as AssocWord)
-        : input.rng.pick(SAMPLE_WORDS)
+    const source =
+      input.pool.items.length > 0 ? (input.pool.items as readonly AssocWord[]) : SAMPLE_WORDS
+    const picked = filterByTopics(source, input.topics)
+    const entry = picked[input.rng.int(picked.length)] ?? SAMPLE_WORDS[0]
     return buildQuestion(entry, input.presenter)
   },
 

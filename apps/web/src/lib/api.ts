@@ -1,4 +1,4 @@
-import type { RoomSummary } from '@retro/types'
+import type { RoomSummary, TopicId } from '@retro/types'
 import { API_BASE } from '@/lib/identity'
 
 /**
@@ -25,6 +25,8 @@ export interface CreateRoomInput {
   readonly isPublic: boolean
   /** 빈 문자열이면 잠그지 않는다. **URL 에 절대 싣지 않는다** */
   readonly password: string
+  /** 고른 주제. 비어 있으면 전체 */
+  readonly topics: readonly TopicId[]
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -93,6 +95,33 @@ export async function fetchRoomState(code: string): Promise<RoomState | null> {
  * WebSocket 은 커스텀 헤더를 못 붙이므로, 비밀번호를 쿼리스트링에 실으면
  * 브라우저 히스토리·리퍼러·서버 로그에 그대로 남는다. 그래서 POST 로 교환한다.
  */
+export type ReportReason = 'wrong-fact' | 'wrong-answer' | 'bad-hint' | 'offensive' | 'etc'
+
+export interface ReportInput {
+  readonly gameId: string
+  readonly reason: ReportReason
+  /** 어떤 문항이었는지. 정답은 담지 않는다 */
+  readonly subject: string
+  readonly detail: string
+  readonly roomCode: string
+}
+
+/**
+ * 문항 신고. 웹훅 주소는 서버에만 있고 클라이언트는 우리 API 만 부른다 —
+ * 웹훅을 번들에 넣으면 누구나 그 주소로 아무 메시지나 쏠 수 있다.
+ */
+export async function sendReport(input: ReportInput): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const body = await readJson(response)
+    throw new Error(typeof body['error'] === 'string' ? body['error'] : '신고를 보내지 못했습니다')
+  }
+}
+
 export async function requestTicket(code: string, password: string): Promise<string | null> {
   const response = await fetch(`${API_BASE}/api/rooms/${code}/ticket`, {
     method: 'POST',

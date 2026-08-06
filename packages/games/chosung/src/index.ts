@@ -1,4 +1,4 @@
-import { asGameId, type PlayerId } from '@retro/types'
+import { asGameId, filterByTopics, type PlayerId } from '@retro/types'
 import {
   firstJungsung,
   normalizeAnswer,
@@ -75,11 +75,11 @@ export const chosungGame: RoomGame<ChosungQuestion, ChosungView> = {
 
   createRound(input: CreateRoundInput): ChosungQuestion {
     // 콘텐츠 풀이 비어 있으면 샘플로 떨어진다 (Phase 0.5)
-    const pool = input.pool.items.length > 0 ? (input.pool.items as readonly ChosungWord[]) : null
-    const entry =
-      pool !== null && pool.length > 0
-        ? (pool[input.rng.int(pool.length)] as ChosungWord)
-        : input.rng.pick(SAMPLE_WORDS)
+    // 콘텐츠 풀이 비어 있으면 샘플로 떨어진다. 그 다음 고른 주제로 좁힌다
+    const source =
+      input.pool.items.length > 0 ? (input.pool.items as readonly ChosungWord[]) : SAMPLE_WORDS
+    const picked = filterByTopics(source, input.topics)
+    const entry = picked[input.rng.int(picked.length)] ?? SAMPLE_WORDS[0]
     return buildQuestion(entry)
   },
 

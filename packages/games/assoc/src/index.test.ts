@@ -19,6 +19,7 @@ function makeQuestion(
     roundNo,
     rng: createRng(asSeed(`${seed}:${roundNo}`)),
     pool: EMPTY_POOL,
+    topics: [],
     presenter,
   })
 }
@@ -80,6 +81,7 @@ test('출제자만 정답을 말할 수 없다', () => {
 test('금칙어가 부분 문자열·초성·반복까지 확장된다', () => {
   const banned = expandBanned({
     word: '삐삐',
+    topic: 'daily',
     category: '90년대 물건',
     aliases: ['무선호출기'],
     banned: ['beeper'],

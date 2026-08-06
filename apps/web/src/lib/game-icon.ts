@@ -1,9 +1,18 @@
 import {
   CalendarClock,
+  Clapperboard,
   Coins,
+  Cpu,
   Gamepad2,
+  Globe,
+  Landmark,
   MessagesSquare,
+  Package,
+  Scroll,
   SpellCheck,
+  Tag,
+  TrendingUp,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -24,4 +33,20 @@ const ICONS: Readonly<Record<string, LucideIcon>> = {
 
 export function gameIcon(name: string): LucideIcon {
   return ICONS[name] ?? Gamepad2
+}
+
+/** 주제 아이콘 — 이름은 @retro/types 의 TOPICS 가 정한다 */
+const TOPIC_ICONS: Readonly<Record<string, LucideIcon>> = {
+  package: Package,
+  clapperboard: Clapperboard,
+  'trending-up': TrendingUp,
+  cpu: Cpu,
+  landmark: Landmark,
+  scroll: Scroll,
+  globe: Globe,
+  trophy: Trophy,
+}
+
+export function topicIcon(name: string): LucideIcon {
+  return TOPIC_ICONS[name] ?? Tag
 }

@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'motion/react'
 import { CircleCheck } from 'lucide-react'
 import type { RoomPhase } from '@retro/types'
 import { isRevealBoard } from '@retro/room-kit/client-state'
@@ -5,6 +8,8 @@ import { AssocBoard, isAssocView } from '@/components/boards/AssocBoard'
 import { ChosungBoard, isChosungView } from '@/components/boards/ChosungBoard'
 import { GeuhaeBoard, isGeuhaeView } from '@/components/boards/GeuhaeBoard'
 import { isMulgaView, MulgaBoard } from '@/components/boards/MulgaBoard'
+import { Countdown } from '@/components/Countdown'
+import { ReportButton } from '@/components/ReportButton'
 
 /**
  * 문제 영역 — 06 문서 §6
@@ -18,10 +23,14 @@ export function Board({
   board,
   phase,
   presenterName,
+  gameId,
+  roomCode,
 }: {
   board: unknown
   phase: RoomPhase
   presenterName: string
+  gameId: string
+  roomCode: string
 }) {
   if (phase.kind === 'lobby') {
     return (
@@ -36,9 +45,7 @@ export function Board({
   if (phase.kind === 'countdown') {
     return (
       <Frame>
-        <p className="text-2xl font-bold" style={{ color: 'var(--text-hi)' }}>
-          곧 시작합니다
-        </p>
+        <Countdown startsAtMs={phase.startsAtMs} />
       </Frame>
     )
   }
@@ -62,10 +69,18 @@ export function Board({
         <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--text-dim)' }}>
           정답
         </p>
-        <p className="mt-2 text-4xl font-bold" style={{ color: 'var(--lime)' }}>
+        <motion.p
+          className="mt-2 text-4xl font-bold"
+          style={{ color: 'var(--lime)' }}
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+        >
           {board.revealed}
-        </p>
+        </motion.p>
         <RevealCard detail={board.detail} />
+        {/* 사실을 다루는 게임은 틀린 문항이 반드시 나온다. 그 자리에서 신고받는다 */}
+        <ReportButton gameId={gameId} subject={board.revealed} roomCode={roomCode} />
       </Frame>
     )
   }

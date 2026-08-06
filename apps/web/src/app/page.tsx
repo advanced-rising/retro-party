@@ -2,8 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, Lock, RefreshCw, User, Users, Zap } from 'lucide-react'
-import type { RoomSummary } from '@retro/types'
+import {
+  Check,
+  Infinity as InfinityIcon,
+  Loader2,
+  Lock,
+  RefreshCw,
+  User,
+  Users,
+  Zap,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { TOPICS, type RoomSummary, type TopicId } from '@retro/types'
+import { topicIcon } from '@/lib/game-icon'
 import { InAppBanner } from '@/components/InAppBanner'
 import { createRoom, fetchGames, fetchRooms, quickJoinTarget, type GameInfo } from '@/lib/api'
 import { gameIcon } from '@/lib/game-icon'
@@ -75,6 +86,7 @@ export default function Home() {
           rounds: 5,
           isPublic: true,
           password: '',
+          topics: [],
         }),
       )
     } catch (cause) {
@@ -284,13 +296,16 @@ function RoomRow({
   )
 }
 
-/** 0 은 무제한 — 사람이 남아 있는 한 계속 돈다 (UNLIMITED_ROUNDS) */
-const ROUND_CHOICES = [
+/**
+ * 0 은 무제한 — 사람이 남아 있는 한 계속 돈다 (UNLIMITED_ROUNDS).
+ * 글자로 쓰면 칸이 좁아 두 줄로 깨지므로 ∞ 아이콘을 쓴다.
+ */
+const ROUND_CHOICES: readonly SegmentOption[] = [
   { value: '3', label: '3' },
   { value: '5', label: '5' },
   { value: '10', label: '10' },
-  { value: '0', label: '무제한' },
-] as const
+  { value: '0', label: '무제한', icon: InfinityIcon },
+]
 
 function CreateRoomForm({
   games,
@@ -311,6 +326,7 @@ function CreateRoomForm({
   const [rounds, setRounds] = useState(5)
   const [password, setPassword] = useState('')
   const [isPublic, setIsPublic] = useState(true)
+  const [topics, setTopics] = useState<readonly TopicId[]>([])
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -328,6 +344,7 @@ function CreateRoomForm({
           rounds,
           isPublic,
           password,
+          topics,
         }),
       )
     } catch (cause) {
@@ -419,6 +436,10 @@ function CreateRoomForm({
         </Field>
       </div>
 
+      <Field label="주제">
+        <TopicPicker selected={topics} onChange={setTopics} />
+      </Field>
+
       <Field label="비밀번호 (선택)">
         <input
           value={password}
@@ -464,6 +485,7 @@ function SoloSection({
   onCreated: (code: string) => void
 }) {
   const [busy, setBusy] = useState(false)
+  const [topics, setTopics] = useState<readonly TopicId[]>([])
 
   async function startSolo(gameId: string): Promise<void> {
     setBusy(true)
@@ -476,6 +498,7 @@ function SoloSection({
           rounds: 5,
           isPublic: false,
           password: '',
+          topics,
         }),
       )
     } catch {
@@ -496,6 +519,8 @@ function SoloSection({
         규칙을 익히기 좋습니다. 단어 연상은 설명이 자동으로 열립니다
       </p>
 
+      <TopicPicker selected={topics} onChange={setTopics} />
+
       <div className="flex flex-wrap gap-1.5">
         {games.map((game) => {
           const Icon = gameIcon(game.icon)
@@ -515,6 +540,70 @@ function SoloSection({
         })}
       </div>
     </section>
+  )
+}
+
+/**
+ * 주제 고르기 — 아무것도 안 고르면 전체다.
+ *
+ * 주제를 좁힐수록 방이 흩어지므로(03 문서 §4) 기본을 「전체」로 두고,
+ * 고른 주제에 문제가 모자라면 서버가 전체로 되돌린다 (filterByTopics).
+ */
+function TopicPicker({
+  selected,
+  onChange,
+}: {
+  selected: readonly TopicId[]
+  onChange: (topics: readonly TopicId[]) => void
+}) {
+  const toggle = (id: TopicId): void => {
+    onChange(selected.includes(id) ? selected.filter((t) => t !== id) : [...selected, id])
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="rounded-full border px-3 py-1.5 text-xs font-semibold"
+          style={{
+            background: selected.length === 0 ? 'var(--lime-wash)' : 'var(--bg-base)',
+            borderColor: selected.length === 0 ? 'var(--lime)' : 'var(--border)',
+            color: selected.length === 0 ? 'var(--lime)' : 'var(--text-lo)',
+          }}
+        >
+          전체
+        </button>
+
+        {TOPICS.map((topic) => {
+          const on = selected.includes(topic.id)
+          const Icon = topicIcon(topic.icon)
+          return (
+            <button
+              key={topic.id}
+              type="button"
+              onClick={() => toggle(topic.id)}
+              title={topic.hint}
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
+              style={{
+                background: on ? 'var(--lime-wash)' : 'var(--bg-base)',
+                borderColor: on ? 'var(--lime)' : 'var(--border)',
+                color: on ? 'var(--lime)' : 'var(--text-lo)',
+              }}
+            >
+              <Icon size={12} aria-hidden />
+              {topic.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+        {selected.length === 0
+          ? '모든 주제에서 문제가 나옵니다'
+          : `${selected.length}개 주제에서만 나옵니다`}
+      </p>
+    </div>
   )
 }
 
@@ -562,32 +651,45 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+interface SegmentOption {
+  readonly value: string
+  readonly label: string
+  /** 있으면 글자 대신 아이콘을 그린다. 라벨은 스크린리더용으로 남는다 */
+  readonly icon?: LucideIcon
+}
+
 function Segmented({
   options,
   value,
   onChange,
 }: {
-  options: readonly { value: string; label: string }[]
+  options: readonly SegmentOption[]
   value: string
   onChange: (value: string) => void
 }) {
   return (
     <div className="flex gap-1">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className="flex-1 rounded-lg border px-2 py-2 text-sm font-semibold"
-          style={{
-            background: value === option.value ? 'var(--lime-wash)' : 'var(--bg-base)',
-            borderColor: value === option.value ? 'var(--lime)' : 'var(--border)',
-            color: value === option.value ? 'var(--lime)' : 'var(--text-lo)',
-          }}
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const on = value === option.value
+        const Icon = option.icon
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            aria-label={option.label}
+            aria-pressed={on}
+            className="flex flex-1 items-center justify-center rounded-lg border px-2 py-2 text-sm font-semibold"
+            style={{
+              background: on ? 'var(--lime-wash)' : 'var(--bg-base)',
+              borderColor: on ? 'var(--lime)' : 'var(--border)',
+              color: on ? 'var(--lime)' : 'var(--text-lo)',
+            }}
+          >
+            {Icon !== undefined ? <Icon size={18} strokeWidth={2.5} aria-hidden /> : option.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

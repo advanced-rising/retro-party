@@ -1,3 +1,4 @@
+import type { TopicId } from '@retro/types'
 import type { NonEmptyArray } from '@retro/room-kit'
 
 /**
@@ -12,6 +13,12 @@ import type { NonEmptyArray } from '@retro/room-kit'
 
 export interface YearEntry {
   readonly year: number
+  /**
+   * 이 문항이 어느 분야를 통해 그 해를 보여주는가.
+   * 같은 연도라도 경제로 보는 1997 과 문화로 보는 1997 은 다른 문항이다 —
+   * 주제를 넣으면서 콘텐츠가 자연스럽게 배가된다.
+   */
+  readonly topic: TopicId
   /**
    * 어려운 것부터 쉬운 것 순서. 앞에서부터 8초 간격으로 열린다.
    * 마지막 힌트는 거의 정답 수준이어야 한다 — 02 문서 §1.1
@@ -31,6 +38,7 @@ export interface YearCard {
 export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   {
     year: 1988,
+    topic: 'sports',
     hints: [
       '이 해에 태어난 사람이 지금 30대 후반이다',
       '국내에서 처음으로 해외여행이 전면 자유화됐다',
@@ -46,6 +54,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 1994,
+    topic: 'society',
     hints: [
       '기록적인 폭염으로 여름이 유난히 길었다',
       '성수대교가 무너진 해다',
@@ -61,6 +70,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 1997,
+    topic: 'economy',
     hints: [
       '연말에 환율이 급등했다',
       '재계 순위권 그룹들이 연달아 무너졌다',
@@ -76,6 +86,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 1998,
+    topic: 'economy',
     hints: [
       '실업률이 급격히 올라간 해다',
       '금 모으기 운동이 전국에서 벌어졌다',
@@ -91,6 +102,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 2002,
+    topic: 'sports',
     hints: [
       '여름 내내 온 나라가 빨간 옷을 입었다',
       '광화문과 시청 앞이 사람으로 가득 찼다',
@@ -106,6 +118,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 2004,
+    topic: 'it',
     hints: [
       '고속철도가 처음 달리기 시작했다',
       '주 5일 근무제가 단계적으로 도입됐다',
@@ -121,6 +134,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 2008,
+    topic: 'economy',
     hints: [
       '전 세계 금융시장이 크게 흔들렸다',
       '리먼 브라더스가 파산했다',
@@ -136,6 +150,7 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
   },
   {
     year: 2012,
+    topic: 'culture',
     hints: [
       '런던에서 하계 올림픽이 열렸다',
       '국내에 LTE 가 본격적으로 깔리기 시작했다',
@@ -147,6 +162,134 @@ export const SAMPLE_YEARS: NonEmptyArray<YearEntry> = [
     card: {
       prices: ['자장면 4,500원', '지하철 1,050원', '커피 아메리카노 3,800원'],
       events: ['「강남스타일」 세계적 흥행', '런던 올림픽', '제18대 대통령 선거'],
+    },
+  },
+  {
+    year: 1997,
+    topic: 'culture',
+    hints: [
+      '드라마 「별은 내 가슴에」 가 방영됐다',
+      'H.O.T 가 데뷔한 이듬해다',
+      '영화 「접속」 이 개봉했다',
+      'PC통신으로 사람을 만나는 이야기가 화제였다',
+      '전도연과 한석규가 주연이었다',
+      '연말에 IMF 구제금융을 신청한 해다',
+    ],
+    card: {
+      prices: ['영화표 5,000원', '자장면 2,500원'],
+      events: ['영화 「접속」 개봉', '드라마 「별은 내 가슴에」', 'IMF 구제금융 요청'],
+    },
+  },
+  {
+    year: 1999,
+    topic: 'it',
+    hints: [
+      '전 세계가 컴퓨터 오류를 걱정했다',
+      '자정에 날짜가 두 자리에서 넘어가는 문제였다',
+      'Y2K 로 불렸다',
+      '국내에 초고속 인터넷이 본격 보급되기 시작했다',
+      '「쉬리」 가 한국 영화 흥행 기록을 세웠다',
+      '다음 해가 2000년이다',
+    ],
+    card: {
+      prices: ['PC방 1시간 1,500원', '자장면 2,900원'],
+      events: ['Y2K 대비 소동', '영화 「쉬리」 흥행', '초고속 인터넷 보급 확대'],
+    },
+  },
+  {
+    year: 1995,
+    topic: 'society',
+    hints: [
+      '지방자치단체장 선거가 부활했다',
+      '삼풍백화점이 무너졌다',
+      '케이블 TV 방송이 시작됐다',
+      '광복 50주년이었다',
+      '조선총독부 건물 철거가 시작됐다',
+      '전년도에는 성수대교가 무너졌다',
+    ],
+    card: {
+      prices: ['시내버스 400원', '자장면 2,300원'],
+      events: ['삼풍백화점 붕괴', '지방자치제 전면 실시', '케이블 TV 개국'],
+    },
+  },
+  {
+    year: 1996,
+    topic: 'society',
+    hints: [
+      '「국민학교」 라는 이름이 사라진 해다',
+      '초등학교로 명칭이 바뀌었다',
+      'OECD 에 가입했다',
+      '아틀란타 올림픽이 열렸다',
+      'H.O.T 가 데뷔했다',
+      '다음 해에 외환위기가 왔다',
+    ],
+    card: {
+      prices: ['자장면 2,400원', '지하철 400원'],
+      events: ['국민학교 → 초등학교 개칭', 'OECD 가입', 'H.O.T 데뷔'],
+    },
+  },
+  {
+    year: 1989,
+    topic: 'world',
+    hints: [
+      '동유럽에서 큰 변화가 이어졌다',
+      '냉전의 상징이 무너진 해다',
+      '베를린 장벽이 개방됐다',
+      '국내에서는 해외여행 자유화가 막 시작된 시기다',
+      '다음 해에 독일이 통일된다',
+      '천안문 사건도 이 해에 있었다',
+    ],
+    card: {
+      prices: ['자장면 800원', '시내버스 170원'],
+      events: ['베를린 장벽 붕괴', '천안문 사건', '해외여행 자유화 확대'],
+    },
+  },
+  {
+    year: 2001,
+    topic: 'world',
+    hints: [
+      '전 세계가 뉴스 속보를 지켜봤다',
+      '9월에 큰 사건이 있었다',
+      '뉴욕 세계무역센터가 무너졌다',
+      '국내에서는 인천국제공항이 문을 열었다',
+      '다음 해에 월드컵이 열린다',
+      '9·11 테러의 해다',
+    ],
+    card: {
+      prices: ['자장면 3,000원', '지하철 600원'],
+      events: ['9·11 테러', '인천국제공항 개항', '한일 월드컵 준비'],
+    },
+  },
+  {
+    year: 1993,
+    topic: 'history',
+    hints: [
+      '32년 만에 군인 출신이 아닌 대통령이 취임했다',
+      '금융실명제가 전격 실시됐다',
+      '대전에서 세계박람회가 열렸다',
+      '엑스포 마스코트는 꿈돌이였다',
+      '문민정부가 출범한 해다',
+      '서태지와 아이들이 2집을 냈다',
+    ],
+    card: {
+      prices: ['자장면 1,800원', '지하철 250원'],
+      events: ['문민정부 출범', '금융실명제 실시', '대전 엑스포'],
+    },
+  },
+  {
+    year: 2010,
+    topic: 'it',
+    hints: [
+      '스마트폰이 빠르게 퍼지기 시작했다',
+      '국내에 아이폰이 들어온 이듬해다',
+      '카카오톡이 출시됐다',
+      '트위터가 국내에서 크게 유행했다',
+      '남아공 월드컵이 열렸다',
+      '2000년대가 막 끝난 다음 해다',
+    ],
+    card: {
+      prices: ['자장면 4,200원', '지하철 900원'],
+      events: ['카카오톡 출시', '남아공 월드컵 16강', '스마트폰 대중화'],
     },
   },
 ]
