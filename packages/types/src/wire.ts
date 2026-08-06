@@ -42,6 +42,7 @@ export type ServerMessage =
       readonly settings: RoomSettings
       readonly participants: readonly Participant[]
       readonly scores: readonly (readonly [PlayerId, number])[]
+      readonly hostId: PlayerId
       readonly you: PlayerId
       readonly yourTeam: TeamId | null
     }

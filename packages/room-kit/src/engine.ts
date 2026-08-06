@@ -120,6 +120,7 @@ export function createEngine<Question, View>(
     settings: room.settings,
     participants: room.participants,
     scores: scoreList(),
+    hostId: room.hostId,
     you: playerId,
     yourTeam: teamOf(playerId),
   })

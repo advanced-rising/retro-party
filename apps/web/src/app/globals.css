@@ -1,0 +1,117 @@
+@import 'tailwindcss';
+
+/**
+ * 컬러 토큰 — 06 문서 §2
+ *
+ * 라이트가 기본, 다크는 오버라이드. 액센트는 테마에 따라 명도가 뒤집힌다.
+ * 라이트에는 네온이 없다.
+ *
+ * 값을 고칠 때는 반드시 `pnpm contrast` 를 다시 돌린다. 눈으로 판단하지 않는다.
+ */
+
+:root {
+  --bg-base: #f7f8fa;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eff1f5;
+  --border: #e3e7ec;
+
+  --text-hi: #12151a;
+  --text: #3a4049;
+  --text-lo: #586070;
+  --text-dim: #646c7a;
+
+  --lime: #1b7a10;
+  --on-lime: #ffffff;
+  --lime-wash: #e8fadf;
+
+  --blue: #1d4ed8;
+  --red: #be1c1c;
+  --amber: #9a4c07;
+  --gold: #7a5a0f;
+  --purple: #6d28d9;
+  --avatar-bg: #5f6874;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base: #0d0f14;
+    --bg-surface: #161a22;
+    --bg-elevated: #1e232d;
+    --border: #252a34;
+
+    --text-hi: #f2f4f8;
+    --text: #c6ccd6;
+    --text-lo: #8e96a4;
+    --text-dim: #828b99;
+
+    --lime: #7cff6b;
+    --on-lime: #07240a;
+    --lime-wash: #1d3320;
+
+    --blue: #7fb4ff;
+    --red: #ff7a7a;
+    --amber: #ffc470;
+    --gold: #ffdd7a;
+    --purple: #c4a3ff;
+    --avatar-bg: #7c8798;
+  }
+}
+
+@theme inline {
+  --color-base: var(--bg-base);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-line: var(--border);
+  --color-hi: var(--text-hi);
+  --color-body: var(--text);
+  --color-lo: var(--text-lo);
+  --color-dim: var(--text-dim);
+  --color-lime: var(--lime);
+  --color-on-lime: var(--on-lime);
+  --color-lime-wash: var(--lime-wash);
+  --color-blue: var(--blue);
+  --color-red: var(--red);
+  --color-amber: var(--amber);
+  --color-gold: var(--gold);
+  --color-purple: var(--purple);
+  --color-avatar: var(--avatar-bg);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text);
+  font-family:
+    Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* 모바일에서 주소창이 접힐 때 입력창이 밀리지 않게 — 06 문서 §8 */
+  overscroll-behavior-y: none;
+}
+
+/* 숫자가 세로로 정렬돼야 점수판이 흔들리지 않는다 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}

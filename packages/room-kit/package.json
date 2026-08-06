@@ -3,7 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@retro/types": "workspace:*" },
-  "scripts": { "typecheck": "tsc --build" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./client-state": "./src/client-state.ts"
+  },
+  "dependencies": {
+    "@retro/types": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --build"
+  }
 }
