@@ -1,0 +1,8 @@
+{
+  "name": "retro-party",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "contrast": "node tools/contrast.mjs"
+  }
+}
