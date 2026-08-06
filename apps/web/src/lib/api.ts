@@ -15,6 +15,7 @@ export interface GameInfo {
   readonly hasPresenter: boolean
   readonly tagline: string
   readonly icon: string
+  readonly howTo: readonly string[]
 }
 
 export interface CreateRoomInput {

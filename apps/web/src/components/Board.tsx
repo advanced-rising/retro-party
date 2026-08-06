@@ -31,6 +31,7 @@ export function Board({
   presenterName,
   gameId,
   roomCode,
+  solvers,
   strokes,
   onStroke,
   onCanvas,
@@ -42,6 +43,8 @@ export function Board({
   presenterName: string
   gameId: string
   roomCode: string
+  /** 방금 라운드를 맞힌 사람들. 정답 공개 화면에 띄운다 */
+  solvers: readonly { readonly nickname: string; readonly elapsedMs: number }[]
   strokes: readonly SketchStroke[]
   onStroke: (s: {
     color: string
@@ -101,6 +104,33 @@ export function Board({
           {board.revealed}
         </m.p>
         <RevealCard detail={board.detail} />
+
+        {/* 누가 맞혔는지 보여준다. 정답만 띄우면 「내가 놓쳤다」가 안 남는다 */}
+        {solvers.length > 0 ? (
+          <ol className="mt-3 flex flex-wrap justify-center gap-1.5">
+            {solvers.slice(0, 5).map((s, i) => (
+              <li
+                key={`${s.nickname}-${i}`}
+                className="flex items-baseline gap-1 rounded-full px-2 py-0.5 text-xs"
+                style={{
+                  background: i === 0 ? 'var(--lime-wash)' : 'var(--bg-elevated)',
+                  color: i === 0 ? 'var(--lime)' : 'var(--text-lo)',
+                }}
+              >
+                <span className="tnum font-semibold">{i + 1}</span>
+                <span className="max-w-24 truncate">{s.nickname}</span>
+                <span className="tnum" style={{ opacity: 0.7 }}>
+                  {(s.elapsedMs / 1000).toFixed(1)}초
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-3 text-xs" style={{ color: 'var(--text-dim)' }}>
+            아무도 못 맞혔습니다
+          </p>
+        )}
+
         {/* 사실을 다루는 게임은 틀린 문항이 반드시 나온다. 그 자리에서 신고받는다 */}
         <ReportButton gameId={gameId} subject={board.revealed} roomCode={roomCode} />
       </Frame>

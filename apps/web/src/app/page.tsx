@@ -433,6 +433,20 @@ function CreateRoomForm({
                 <span className="block text-xs" style={{ color: 'var(--text-dim)' }}>
                   {game.tagline}
                 </span>
+                {/* 고른 게임만 규칙을 펼친다. 전부 펼치면 목록이 안 읽힌다 */}
+                {gameId === game.id && game.howTo.length > 0 && (
+                  <span className="mt-1.5 block">
+                    {game.howTo.map((line) => (
+                      <span
+                        key={line}
+                        className="block text-xs leading-relaxed"
+                        style={{ color: 'var(--text-lo)' }}
+                      >
+                        · {line}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </span>
               <span
                 className="tnum shrink-0 text-right text-xs"

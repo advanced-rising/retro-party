@@ -17,10 +17,14 @@ import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
 import { InAppBanner } from '@/components/InAppBanner'
+import { GameGuide } from '@/components/GameGuide'
 import { MatchHistory } from '@/components/MatchHistory'
+import { Podium } from '@/components/Podium'
+import { RoundBadge } from '@/components/RoundBadge'
+import { TeamBar } from '@/components/TeamBar'
 import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
-import { fetchRoomState, requestTicket } from '@/lib/api'
+import { fetchGames, fetchRoomState, requestTicket, type GameInfo } from '@/lib/api'
 import { gameIcon } from '@/lib/game-icon'
 import { LevelBadge } from '@/components/LevelBadge'
 import { API_BASE, addXp, loadIdentity, loadXp } from '@/lib/identity'
@@ -144,8 +148,14 @@ function Room({
   const [copied, setCopied] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [xp, setXp] = useState(0)
+  const [games, setGames] = useState<readonly GameInfo[]>([])
 
-  useEffect(() => setXp(loadXp()), [])
+  useEffect(() => {
+    setXp(loadXp())
+    void fetchGames()
+      .then(setGames)
+      .catch(() => undefined)
+  }, [])
 
   // 내 정답 줄이 새로 들어온 순간을 센다. 이 값이 오르면 이펙트가 터진다
   const myCorrects = view.lines.filter((l) => l.from === view.you && l.correct !== null).length
@@ -169,6 +179,7 @@ function Room({
     setTimeout(() => setCopied(false), 1_600)
   }, [])
 
+  const game = games.find((g) => g.id === view.settings?.gameId)
   const GameIcon = gameIcon(GAME_ICONS[view.settings?.gameId ?? ''] ?? '')
   const isHost = view.you !== null && view.you === view.hostId
   const teamMode = view.settings?.mode === 'team'
@@ -185,6 +196,17 @@ function Room({
       : null
   const presenterName =
     view.participants.find((p) => p.playerId === presenterId)?.nickname ?? '출제자'
+
+  // 방금 공개된 라운드를 맞힌 사람들 — 기록의 마지막 항목이 그것이다
+  const lastRound = view.history.at(-1)
+  const revealSolvers =
+    view.phase.kind === 'reveal' && lastRound !== undefined
+      ? lastRound.solvers.map((s) => ({
+          nickname:
+            view.participants.find((p) => p.playerId === s.playerId)?.nickname ?? '나간 사람',
+          elapsedMs: s.elapsedMs,
+        }))
+      : []
 
   return (
     /**
@@ -237,6 +259,8 @@ function Room({
           </span>
         </span>
 
+        <RoundBadge phase={view.phase} rounds={view.settings?.rounds ?? 0} />
+
         {/* 지나온 문제 다시 보기. 무제한 판에서는 이게 유일한 통로다 */}
         {view.history.length > 0 && (
           <button
@@ -272,6 +296,17 @@ function Room({
       <div className="flex min-h-0 flex-1 flex-col gap-0 lg:flex-row lg:gap-6">
         {/* 왼쪽 — 문제. 넓은 화면에서 더 많은 폭을 가져간다 */}
         <div className="flex min-h-0 flex-col lg:flex-[1.5] lg:overflow-y-auto">
+      {/* 팀전은 팀 점수가 보여야 팀전이다 */}
+      {teamMode && view.phase.kind !== 'lobby' && (
+        <div className="pb-3">
+          <TeamBar
+            participants={view.participants}
+            scores={view.scores}
+            yourTeam={view.yourTeam}
+          />
+        </div>
+      )}
+
       {view.phase.kind === 'playing' && (
         <div className="flex items-center gap-2 pb-3">
           <div className="min-w-0 flex-1">
@@ -331,12 +366,36 @@ function Room({
         </div>
       )}
 
+      {/* 대기실에서는 펼쳐 두고, 진행 중에는 접어서 물음표만 남긴다 */}
+      {game !== undefined && view.phase.kind !== 'result' && (
+        <div className="pb-3">
+          <GameGuide
+            name={game.name}
+            icon={game.icon}
+            howTo={game.howTo}
+            defaultOpen={view.phase.kind === 'lobby'}
+          />
+        </div>
+      )}
+
+      {view.phase.kind === 'result' && (
+        <div className="pb-4 pt-1">
+          <Podium
+            participants={view.participants}
+            scores={view.scores}
+            you={view.you}
+            teamMode={teamMode}
+          />
+        </div>
+      )}
+
       <Board
         board={view.board}
         phase={view.phase}
         presenterName={presenterName}
         gameId={view.settings?.gameId ?? ''}
         roomCode={code}
+        solvers={revealSolvers}
         strokes={view.strokes}
         onStroke={actions.stroke}
         onCanvas={actions.canvas}
