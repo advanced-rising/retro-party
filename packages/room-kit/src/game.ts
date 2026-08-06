@@ -46,10 +46,27 @@ export interface RoomGame<Question, View> {
   advance?(question: Question, input: JudgeInput<Question>): Question
 
   /**
+   * **라운드 도중에 출제자가 바뀌는 게임** (이어 그리기).
+   *
+   * 대부분의 게임은 라운드 내내 출제자가 한 명이라 이걸 구현하지 않는다.
+   * 반환값이 지금 출제자와 다르면 엔진이 갈아끼우고 모두에게 다시 알린다.
+   * 후보는 `candidates` 로 넘어온다 — 게임이 참가자 목록을 알 필요가 없다.
+   */
+  presenterAt?(input: PresenterInput<Question>): PlayerId | null
+
+  /**
    * 라운드가 끝날 때 얹는 점수 (단어 연상의 출제자 보너스) — 02 문서 §3.5
    * 맞힌 사람 수에 연동되므로 라운드가 끝나야 계산할 수 있다.
    */
   roundEndBonus?(question: Question, round: RoundState): readonly ScoreDelta[]
+}
+
+export interface PresenterInput<Question> {
+  readonly question: Question
+  readonly round: RoundState
+  readonly nowMs: number
+  /** 지금 출제자가 될 수 있는 사람. 접속해 있고 쉬지 않는 사람 */
+  readonly candidates: readonly PlayerId[]
 }
 
 export interface BlockedWordsInput<Question> {
@@ -160,6 +177,14 @@ export interface RoundState {
    */
   readonly wrongs: readonly PlayerId[]
   readonly presenter: PlayerId | null
+  /**
+   * 이번 라운드에 출제자였던 사람들. 순서대로, 중복 없이.
+   *
+   * 라운드 내내 한 명인 게임에서는 원소가 하나뿐이다.
+   * 이어 그리기처럼 도중에 바뀌는 게임이 「누가 답을 봤는가」를 여기서 안다 —
+   * 게임이 직접 세면 채팅 같은 다른 일에 얽혀서 놓치는 경우가 생긴다.
+   */
+  readonly presenters: readonly PlayerId[]
   /** 맞힐 수 있는 참가자 수 (출제자 제외). 전원 정답 시 조기 종료 판정에 쓴다 */
   readonly expectedSolvers: number
 }
@@ -195,6 +220,7 @@ export function emptyRound(input: EmptyRoundInput): RoundState {
     partials: [],
     wrongs: [],
     presenter: input.presenter,
+    presenters: input.presenter === null ? [] : [input.presenter],
     expectedSolvers: input.expectedSolvers,
   }
 }

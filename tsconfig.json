@@ -29,6 +29,12 @@
       "path": "./packages/games/kkungtta"
     },
     {
+      "path": "./packages/games/baseball"
+    },
+    {
+      "path": "./packages/games/relay"
+    },
+    {
       "path": "./packages/games/geuhae"
     },
     {

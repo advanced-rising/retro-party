@@ -783,6 +783,29 @@ export function createEngine<Question, View>(
 
         case 'playing': {
           if (nowMs >= phase.endsAtMs) return endRound(nowMs)
+
+          // 라운드 도중에 출제자가 바뀌는 게임 (이어 그리기)
+          if (round !== null && question !== null && game.presenterAt !== undefined) {
+            const next = game.presenterAt({
+              question,
+              round,
+              nowMs,
+              candidates: active().map((p) => p.playerId),
+            })
+            if (next !== round.presenter) {
+              // 거쳐 간 출제자를 남긴다. 이어 그리기가 「누가 답을 봤는가」를 여기서 안다
+              const presenters =
+                next === null || round.presenters.includes(next)
+                  ? round.presenters
+                  : [...round.presenters, next]
+              round = { ...round, presenter: next, presenters }
+              presenterSpokeAtMs = nowMs
+              return [
+                ...boardsAt(nowMs),
+                { kind: 'alarm', atMs: Math.min(nowMs + 1_000, phase.endsAtMs) },
+              ]
+            }
+          }
           // 출제자가 자리를 비우면 나머지가 90초를 통째로 버린다 — 02 문서 §3.8
           if (
             round !== null &&

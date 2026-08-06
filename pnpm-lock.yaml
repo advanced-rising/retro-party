@@ -11,6 +11,9 @@ importers:
       '@retro/game-assoc':
         specifier: workspace:*
         version: link:packages/games/assoc
+      '@retro/game-baseball':
+        specifier: workspace:*
+        version: link:packages/games/baseball
       '@retro/game-chosung':
         specifier: workspace:*
         version: link:packages/games/chosung
@@ -26,6 +29,9 @@ importers:
       '@retro/game-oxquiz':
         specifier: workspace:*
         version: link:packages/games/oxquiz
+      '@retro/game-relay':
+        specifier: workspace:*
+        version: link:packages/games/relay
       '@retro/game-sketch':
         specifier: workspace:*
         version: link:packages/games/sketch
@@ -50,6 +56,9 @@ importers:
       '@retro/game-assoc':
         specifier: workspace:*
         version: link:../../packages/games/assoc
+      '@retro/game-baseball':
+        specifier: workspace:*
+        version: link:../../packages/games/baseball
       '@retro/game-chosung':
         specifier: workspace:*
         version: link:../../packages/games/chosung
@@ -65,6 +74,9 @@ importers:
       '@retro/game-oxquiz':
         specifier: workspace:*
         version: link:../../packages/games/oxquiz
+      '@retro/game-relay':
+        specifier: workspace:*
+        version: link:../../packages/games/relay
       '@retro/game-sketch':
         specifier: workspace:*
         version: link:../../packages/games/sketch
@@ -131,6 +143,15 @@ importers:
         specifier: workspace:*
         version: link:../../types
 
+  packages/games/baseball:
+    dependencies:
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:../../room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:../../types
+
   packages/games/chosung:
     dependencies:
       '@retro/room-kit':
@@ -169,6 +190,18 @@ importers:
 
   packages/games/oxquiz:
     dependencies:
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:../../room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:../../types
+
+  packages/games/relay:
+    dependencies:
+      '@retro/game-sketch':
+        specifier: workspace:*
+        version: link:../sketch
       '@retro/room-kit':
         specifier: workspace:*
         version: link:../../room-kit

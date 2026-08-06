@@ -1,0 +1,9 @@
+{
+  "name": "@retro/game-relay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@retro/types": "workspace:*", "@retro/room-kit": "workspace:*", "@retro/game-sketch": "workspace:*" },
+  "scripts": { "typecheck": "tsc --build" }
+}

@@ -37,6 +37,12 @@
       ],
       "@retro/game-kkungtta": [
         "../packages/games/kkungtta/src/index.ts"
+      ],
+      "@retro/game-baseball": [
+        "../packages/games/baseball/src/index.ts"
+      ],
+      "@retro/game-relay": [
+        "../packages/games/relay/src/index.ts"
       ]
     }
   },
@@ -73,6 +79,12 @@
     },
     {
       "path": "../packages/games/kkungtta"
+    },
+    {
+      "path": "../packages/games/baseball"
+    },
+    {
+      "path": "../packages/games/relay"
     }
   ]
 }

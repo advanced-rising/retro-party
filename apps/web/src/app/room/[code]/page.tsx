@@ -442,6 +442,8 @@ const GAME_ICONS: Readonly<Record<string, string>> = {
   timeline: 'list-ordered',
   oxquiz: 'circle-slash',
   kkungtta: 'link',
+  baseball: 'target',
+  relay: 'users-round',
 }
 
 function Splash() {

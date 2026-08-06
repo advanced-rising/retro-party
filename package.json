@@ -27,6 +27,8 @@
     "@retro/game-sketch": "workspace:*",
     "@retro/game-timeline": "workspace:*",
     "@retro/game-oxquiz": "workspace:*",
-    "@retro/game-kkungtta": "workspace:*"
+    "@retro/game-kkungtta": "workspace:*",
+    "@retro/game-baseball": "workspace:*",
+    "@retro/game-relay": "workspace:*"
   }
 }

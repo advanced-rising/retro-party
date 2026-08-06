@@ -17,6 +17,8 @@ import {
   Landmark,
   Medal,
   Shield,
+  Target,
+  UsersRound,
   Link2,
   ListOrdered,
   MessagesSquare,

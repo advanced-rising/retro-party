@@ -16,6 +16,10 @@ export interface SketchDrawerView {
   readonly word: string
   readonly category: string
   readonly solvedCount: number
+  /** 이어 그리기에서만. 지금 내 차례인가 */
+  readonly myTurn?: boolean
+  readonly turn?: number
+  readonly totalTurns?: number
 }
 
 export interface SketchGuesserView {
@@ -25,6 +29,8 @@ export interface SketchGuesserView {
   readonly presenter: PlayerId | null
   readonly solvedCount: number
   readonly youSolved: boolean
+  readonly turn?: number
+  readonly totalTurns?: number
 }
 
 export type SketchView = SketchDrawerView | SketchGuesserView
@@ -97,7 +103,9 @@ export function SketchBoard({
   onStroke: (s: { color: string; width: number; points: readonly { x: number; y: number }[] }) => void
   onCanvas: (action: 'clear' | 'undo') => void
 }) {
-  const drawing = view.role === 'drawer'
+  // 이어 그리기는 「그린 사람」이지만 지금 차례가 아닐 수 있다
+  const drawing = view.role === 'drawer' && view.myTurn !== false
+  const relay = view.turn !== undefined && view.totalTurns !== undefined
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [color, setColor] = useState<SketchColor>('ink')
   const [width, setWidth] = useState<SketchWidth>(6)
@@ -181,15 +189,28 @@ export function SketchBoard({
   }
 
   if (!drawing) {
+    const waiting = view.role === 'drawer'
     return (
       <>
         <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--text-dim)' }}>
-          {view.presenter === null ? '그리는 중' : `${presenterName} 님이 그리는 중`}
+          {waiting ? '다른 사람이 이어 그리는 중' : `${presenterName} 님이 그리는 중`}
+          {relay && ` · ${view.turn}/${view.totalTurns} 차례`}
         </p>
+
+        {/* 이미 그린 사람은 답을 안다. 맞히는 사람에게만 감춘다 */}
+        {waiting && view.role === 'drawer' && (
+          <p className="mt-1 text-xl font-bold" style={{ color: 'var(--text-hi)' }}>
+            {view.word}
+          </p>
+        )}
+
         <Canvas ref={canvasRef} interactive={false} />
-        <p className="mt-2 text-sm" style={{ color: 'var(--text-lo)' }}>
-          {view.category} · {view.length}글자
-        </p>
+
+        {view.role === 'guesser' && (
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-lo)' }}>
+            {view.category} · {view.length}글자
+          </p>
+        )}
       </>
     )
   }
@@ -201,7 +222,7 @@ export function SketchBoard({
         style={{ color: 'var(--purple)' }}
       >
         <Pencil size={13} aria-hidden />
-        당신이 그립니다
+        {relay ? `당신 차례입니다 · ${view.turn}/${view.totalTurns}` : '당신이 그립니다'}
       </p>
       <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--text-hi)' }}>
         {view.word}

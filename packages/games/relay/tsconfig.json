@@ -1,0 +1,33 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "paths": {
+      "@retro/types": [
+        "../../types/src/index.ts"
+      ],
+      "@retro/room-kit": [
+        "../../room-kit/src/index.ts"
+      ],
+      "@retro/game-sketch": [
+        "../sketch/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../types"
+    },
+    {
+      "path": "../../room-kit"
+    },
+    {
+      "path": "../sketch"
+    }
+  ]
+}

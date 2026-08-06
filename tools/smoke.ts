@@ -354,7 +354,9 @@ async function gateAllGames(): Promise<void> {
   console.log('\n5. 게임 3종이 각각 돈다')
 
   const response = await fetch(`${BASE}/api/games`)
-  const body = (await response.json()) as { games?: { id: string; name: string }[] }
+  const body = (await response.json()) as {
+    games?: { id: string; name: string; minPlayers: number }[]
+  }
   const games = body.games ?? []
   check(games.length >= 3, '게임이 3종 이상 등록됐다', games.map((g) => g.name).join(' · '))
 
@@ -370,13 +372,23 @@ async function gateAllGames(): Promise<void> {
     timeline: { expect: 'events', forbid: ['order', 'year'] },
     oxquiz: { expect: 'youAnswered', forbid: ['answer'] },
     kkungtta: { expect: 'nextChar', forbid: ['dictionary'] },
+    baseball: { expect: 'digits', forbid: ['secret'] },
+    relay: { expect: 'role', forbid: ['word', 'answers', 'banned'] },
     mulga: { expect: 'item', forbid: ['price'] },
   }
 
   for (const game of games) {
     const code = await newRoom({ gameId: game.id, rounds: 2, title: `${game.name} 검증` })
-    const a = await connect(code, 'g0', '방장')
-    const b = await connect(code, 'g1', '둘째')
+
+    // 게임이 요구하는 인원을 채운다. 이어 그리기는 그리는 둘 + 맞히는 하나가 필요하다
+    const need = Math.max(2, game.minPlayers)
+    const clients = []
+    for (let i = 0; i < need; i++) clients.push(await connect(code, `g${i}`, `참가${i}`))
+    const a = clients[0]
+    // 맞히는 쪽을 본다 — 출제자는 정답을 보는 게 정상이라 누출 검사가 안 된다
+    const b = clients[clients.length - 1]
+    if (a === undefined || b === undefined) continue
+
     await sleep(300)
     send(a, { type: 'start' })
     await sleep(4_500)
@@ -400,8 +412,7 @@ async function gateAllGames(): Promise<void> {
     })
     check(!leaked, `${game.name} — ★ 맞히는 사람 board 에 정답이 없다`)
 
-    a.socket.close()
-    b.socket.close()
+    for (const client of clients) client.socket.close()
     await sleep(200)
   }
 }

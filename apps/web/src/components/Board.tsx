@@ -9,6 +9,7 @@ import { ChosungBoard, isChosungView } from '@/components/boards/ChosungBoard'
 import { GeuhaeBoard, isGeuhaeView } from '@/components/boards/GeuhaeBoard'
 import { isMulgaView, MulgaBoard } from '@/components/boards/MulgaBoard'
 import { isSketchView, SketchBoard } from '@/components/boards/SketchBoard'
+import { BaseballBoard, isBaseballView } from '@/components/boards/BaseballBoard'
 import { isKkungttaView, KkungttaBoard } from '@/components/boards/KkungttaBoard'
 import { isOxView, OxBoard } from '@/components/boards/OxBoard'
 import { isTimelineView, TimelineBoard } from '@/components/boards/TimelineBoard'
@@ -128,6 +129,15 @@ export function Board({
     return (
       <Frame correctAt={correctAt}>
         <MulgaBoard view={board} />
+        <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
+  if (isBaseballView(board)) {
+    return (
+      <Frame correctAt={correctAt}>
+        <BaseballBoard view={board} />
         <Solved count={board.solvedCount} you={board.youSolved} />
       </Frame>
     )

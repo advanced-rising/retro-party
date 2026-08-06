@@ -8,6 +8,8 @@ import { sketchGame } from '@retro/game-sketch'
 import { timelineGame } from '@retro/game-timeline'
 import { oxquizGame } from '@retro/game-oxquiz'
 import { kkungttaGame } from '@retro/game-kkungtta'
+import { baseballGame } from '@retro/game-baseball'
+import { relayGame } from '@retro/game-relay'
 
 /**
  * 게임 레지스트리 — 09 문서 §6
@@ -28,6 +30,8 @@ const GAMES: readonly RoomGame<never, never>[] = [
   timelineGame as unknown as RoomGame<never, never>,
   oxquizGame as unknown as RoomGame<never, never>,
   kkungttaGame as unknown as RoomGame<never, never>,
+  baseballGame as unknown as RoomGame<never, never>,
+  relayGame as unknown as RoomGame<never, never>,
 ]
 
 export const DEFAULT_GAME_ID: GameId = chosungGame.id
@@ -53,6 +57,8 @@ const TAGLINES: Readonly<Record<string, string>> = {
   timeline: '사건 다섯 개를 시간순으로 늘어놓는다. 거의 맞춰도 점수를 준다',
   oxquiz: '10초. 생각할 틈을 주지 않는다. 가장 빠른 리듬',
   kkungtta: '세 글자로 끝말을 잇는다. 오래 이을수록 좋다',
+  baseball: '스트라이크와 볼로 숫자를 좁혀 간다. 아는 게 없어도 된다',
+  relay: '여럿이 이어서 한 그림을 그린다. 무너지는 게 재밌다',
 }
 
 const ICONS: Readonly<Record<string, string>> = {
@@ -64,6 +70,8 @@ const ICONS: Readonly<Record<string, string>> = {
   timeline: 'list-ordered',
   oxquiz: 'circle-slash',
   kkungtta: 'link',
+  baseball: 'target',
+  relay: 'users-round',
 }
 
 export function resolveGame(gameId: GameId): AnyGame {
