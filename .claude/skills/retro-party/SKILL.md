@@ -195,7 +195,21 @@ verbatimModuleSyntax          타입 import 는 `import type`
 
 ```bash
 pnpm typecheck      # tsc --build. 실패하면 머지 금지
+pnpm test           # node:test. 게임 모듈과 방 엔진은 테스트가 있어야 한다
 ```
+
+### 검증할 수 없는 곳에 로직을 두지 않는다
+
+React 훅이나 DO 클래스 안에 판단 로직을 넣으면 아무도 테스트하지 못한다.
+그래서 이 레포는 로직을 항상 순수 함수로 빼서 노드에서 돌린다.
+
+```
+방 상태 전이      room-kit/engine.ts        ← RoomDO 가 아니라 여기
+서버 메시지 접기   room-kit/client-state.ts  ← useRoomSocket 이 아니라 여기
+게임 규칙         games/{id}/index.ts
+```
+
+`RoomDO` 는 소켓만, 훅은 연결만 담당한다.
 
 ---
 

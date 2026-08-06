@@ -113,11 +113,39 @@ NestJS  (Phase 2~)   콘텐츠 배치 · 관리자
 **게임 서버는 Durable Objects다.** 방 하나 = DO 인스턴스 하나.
 런타임에 LLM을 호출하지 않는다 — 방에서 벌어지는 모든 일은 사전 생성된 데이터와 순수 로직으로 돌아간다.
 
-## 검증 도구
+## 실행
 
 ```bash
-pnpm contrast     # 컬러 토큰 대비 검증 (WCAG AA/1.4.11) — 32건
+pnpm install
+
+pnpm --filter @retro/api dev      # 게임 서버 (Durable Objects)  :8787
+pnpm --filter @retro/web dev      # 화면                          :3000
 ```
+
+브라우저 두 개로 `http://localhost:3000` 을 열고 [바로 참가] → 방 코드를 공유하면
+한 방에서 붙습니다. 2명부터 시작됩니다.
+
+## 검증 도구
+
+**눈으로 판단하지 않는다.** 전부 실패하면 exit 1 로 떨어진다.
+
+```bash
+pnpm typecheck    # tsc --build (strict + noUncheckedIndexedAccess 등)
+pnpm test         # 37건 — 정답 누출 · 팀 채널 격리 · 재접속 · 벤치 회전
+pnpm contrast     # 컬러 토큰 대비 (WCAG AA / 1.4.11) — 32건
+pnpm smoke        # 서버를 띄운 뒤 Phase 0.5 관문 실측
+```
+
+`pnpm smoke` 가 재는 것 (07 문서 §G0.5)
+
+| 항목 | 기준 | 실측 |
+|---|---|---|
+| 8명 동시 접속 | 8소켓 | 61ms |
+| 9번째 입장 | 거절 | `room_full` |
+| 채팅 왕복 | p95 < 150ms | p50 4.4ms · p95 47.7ms |
+| board 정답 누출 | 없음 | 없음 |
+| 진행 중 재접속 | 점수·자리 유지 | 유지 |
+| 팀 채널 격리 | 상대 팀 미수신 | 같은 팀 2명만 |
 
 ## 작업 규약
 
@@ -127,7 +155,19 @@ pnpm contrast     # 컬러 토큰 대비 검증 (WCAG AA/1.4.11) — 32건
 
 ## 현재 상태
 
-기획 완료. 구현 착수 전.
+**Phase 0.5 관문 통과.** 초성 퀴즈로 8명이 한 방에서 실제로 한 판을 돌린다.
+
+```
+packages/types        브랜디드 ID · 방 · WebSocket 프로토콜 + 런타임 파서
+packages/room-kit     방 상태 머신 · 판정 · 팀 편성 · 채팅 · 시드 난수
+                      client-state — 서버 메시지를 화면 상태로 접는 순수 리듀서
+packages/games/       chosung  초성 퀴즈
+apps/api              Worker + RoomDO (WebSocket · Hibernation)
+apps/web              Next.js 방 화면
+tools/                contrast · smoke
+```
+
+다음: 「그 해」·「단어 연상」, 방 목록과 뭉치기 압력(03 문서 §4), 콘텐츠 파이프라인.
 
 ## 관련 저장소
 
