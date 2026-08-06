@@ -4,6 +4,7 @@ import { isRevealBoard } from '@retro/room-kit/client-state'
 import { AssocBoard, isAssocView } from '@/components/boards/AssocBoard'
 import { ChosungBoard, isChosungView } from '@/components/boards/ChosungBoard'
 import { GeuhaeBoard, isGeuhaeView } from '@/components/boards/GeuhaeBoard'
+import { isMulgaView, MulgaBoard } from '@/components/boards/MulgaBoard'
 
 /**
  * 문제 영역 — 06 문서 §6
@@ -87,6 +88,15 @@ export function Board({
     )
   }
 
+  if (isMulgaView(board)) {
+    return (
+      <Frame>
+        <MulgaBoard view={board} />
+        <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
   if (isAssocView(board)) {
     return (
       <Frame>
@@ -112,6 +122,15 @@ export function Board({
 function RevealCard({ detail }: { detail: unknown }) {
   if (typeof detail !== 'object' || detail === null) return null
   const record = detail as Record<string, unknown>
+  // 「그때 그 가격」 — 무엇의 가격이었는지 다시 보여준다
+  if (typeof record['item'] === 'string' && typeof record['year'] === 'number') {
+    return (
+      <p className="mt-2 text-sm" style={{ color: 'var(--text-lo)' }}>
+        <span className="tnum">{record['year']}</span>년 {record['item']}
+      </p>
+    )
+  }
+
   const prices = Array.isArray(record['prices']) ? (record['prices'] as string[]) : []
   const events = Array.isArray(record['events']) ? (record['events'] as string[]) : []
   if (prices.length === 0 && events.length === 0) return null

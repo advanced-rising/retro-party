@@ -107,6 +107,7 @@ export const chosungGame: RoomGame<ChosungQuestion, ChosungView> = {
       points: roundScore({
         rank,
         elapsedMs: input.atMs - input.round.startedAtMs,
+        roundMs: ROUND_MS,
       }),
     }
   },

@@ -33,6 +33,8 @@ export interface ChatLine {
   readonly channel: ChatChannel
   /** 정답이면 강조 표시가 붙는다. 채팅 자체는 저장하지 않는다 — 08 문서 */
   readonly correct: { readonly points: number; readonly rank: number } | null
+  /** 판정이 남긴 한 줄. 「그때 그 가격」의 "더 비싸요" 같은 것 */
+  readonly note: string | null
 }
 
 export type ServerMessage =

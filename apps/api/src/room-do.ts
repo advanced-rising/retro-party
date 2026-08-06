@@ -489,9 +489,10 @@ function parseMode(raw: unknown): RoomSettings['mode'] {
   return raw === 'team' || raw === 'solo' || raw === 'rank' ? raw : 'casual'
 }
 
+/** 0 은 무제한이다 (UNLIMITED_ROUNDS). 그래서 하한이 1 이 아니라 0 이다 */
 function clampRounds(raw: unknown): number {
   const n = typeof raw === 'number' ? Math.round(raw) : 5
-  return Math.min(20, Math.max(1, Number.isFinite(n) ? n : 5))
+  return Math.min(20, Math.max(0, Number.isFinite(n) ? n : 5))
 }
 
 const AVATARS = [

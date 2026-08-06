@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Lock, RefreshCw, User, Users, Zap } from 'lucide-react'
+import { Check, Loader2, Lock, RefreshCw, User, Users, Zap } from 'lucide-react'
 import type { RoomSummary } from '@retro/types'
 import { InAppBanner } from '@/components/InAppBanner'
 import { createRoom, fetchGames, fetchRooms, quickJoinTarget, type GameInfo } from '@/lib/api'
+import { gameIcon } from '@/lib/game-icon'
 import { loadIdentity, saveNickname } from '@/lib/identity'
 
 /**
@@ -237,7 +238,9 @@ function RoomRow({
   games: readonly GameInfo[]
   onEnter: () => void
 }) {
-  const gameName = games.find((g) => g.id === room.gameId)?.name ?? room.gameId
+  const game = games.find((g) => g.id === room.gameId)
+  const gameName = game?.name ?? room.gameId
+  const GameIcon = gameIcon(game?.icon ?? '')
   const full = room.players >= room.capacity
   const playing = room.phase !== 'lobby' && room.phase !== 'result'
 
@@ -250,6 +253,8 @@ function RoomRow({
         className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left disabled:opacity-45"
         style={{ background: 'var(--bg-surface)' }}
       >
+        <GameIcon size={18} className="shrink-0" color="var(--text-lo)" aria-hidden />
+
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
             {room.locked && <Lock size={12} color="var(--amber)" aria-label="비밀번호" />}
@@ -279,7 +284,13 @@ function RoomRow({
   )
 }
 
-const ROUND_CHOICES = [3, 5, 10] as const
+/** 0 은 무제한 — 사람이 남아 있는 한 계속 돈다 (UNLIMITED_ROUNDS) */
+const ROUND_CHOICES = [
+  { value: '3', label: '3' },
+  { value: '5', label: '5' },
+  { value: '10', label: '10' },
+  { value: '0', label: '무제한' },
+] as const
 
 function CreateRoomForm({
   games,
@@ -347,17 +358,26 @@ function CreateRoomForm({
 
       <Field label="게임">
         <div className="space-y-1.5">
-          {games.map((game) => (
+          {games.map((game) => {
+            const Icon = gameIcon(game.icon)
+            const on = gameId === game.id
+            return (
             <button
               key={game.id}
               type="button"
               onClick={() => setGameId(game.id)}
-              className="flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left"
               style={{
-                background: gameId === game.id ? 'var(--lime-wash)' : 'var(--bg-base)',
-                borderColor: gameId === game.id ? 'var(--lime)' : 'var(--border)',
+                background: on ? 'var(--lime-wash)' : 'var(--bg-base)',
+                borderColor: on ? 'var(--lime)' : 'var(--border)',
               }}
             >
+              <Icon
+                size={20}
+                className="shrink-0"
+                color={on ? 'var(--lime)' : 'var(--text-lo)'}
+                aria-hidden
+              />
               <span className="min-w-0 flex-1">
                 <span
                   className="block text-sm font-semibold"
@@ -373,7 +393,8 @@ function CreateRoomForm({
                 {Math.round(game.roundMs / 1000)}초
               </span>
             </button>
-          ))}
+            )
+          })}
         </div>
       </Field>
 
@@ -391,7 +412,7 @@ function CreateRoomForm({
 
         <Field label="라운드">
           <Segmented
-            options={ROUND_CHOICES.map((n) => ({ value: String(n), label: String(n) }))}
+            options={ROUND_CHOICES}
             value={String(rounds)}
             onChange={(v) => setRounds(Number(v))}
           />
@@ -411,15 +432,13 @@ function CreateRoomForm({
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-lo)' }}>
-        <input
-          type="checkbox"
-          checked={isPublic}
-          onChange={(e) => setIsPublic(e.target.checked)}
-          className="size-4"
-        />
-        방 목록에 공개
-      </label>
+      {rounds === 0 && (
+        <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+          사람이 한 명이라도 남아 있으면 문제가 계속 나옵니다
+        </p>
+      )}
+
+      <Checkbox checked={isPublic} onChange={setIsPublic} label="방 목록에 공개" />
 
       <button
         type="button"
@@ -478,20 +497,57 @@ function SoloSection({
       </p>
 
       <div className="flex flex-wrap gap-1.5">
-        {games.map((game) => (
-          <button
-            key={game.id}
-            type="button"
-            disabled={busy}
-            onClick={() => void startSolo(game.id)}
-            className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-            style={{ background: 'var(--bg-elevated)', color: 'var(--text-hi)' }}
-          >
-            {game.name}
-          </button>
-        ))}
+        {games.map((game) => {
+          const Icon = gameIcon(game.icon)
+          return (
+            <button
+              key={game.id}
+              type="button"
+              disabled={busy}
+              onClick={() => void startSolo(game.id)}
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              style={{ background: 'var(--bg-elevated)', color: 'var(--text-hi)' }}
+            >
+              <Icon size={14} color="var(--text-lo)" aria-hidden />
+              {game.name}
+            </button>
+          )
+        })}
       </div>
     </section>
+  )
+}
+
+/** 브라우저 기본 체크박스는 OS 마다 다르게 보이고 액센트 색을 못 입힌다 */
+function Checkbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-2.5 text-sm"
+      style={{ color: 'var(--text-hi)' }}
+    >
+      <span
+        className="flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors"
+        style={{
+          background: checked ? 'var(--lime)' : 'var(--bg-base)',
+          borderColor: checked ? 'var(--lime)' : 'var(--border)',
+        }}
+      >
+        {checked && <Check size={13} strokeWidth={3} color="var(--on-lime)" aria-hidden />}
+      </span>
+      {label}
+    </button>
   )
 }
 

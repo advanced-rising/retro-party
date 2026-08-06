@@ -14,6 +14,9 @@
       "path": "./packages/games/assoc"
     },
     {
+      "path": "./packages/games/mulga"
+    },
+    {
       "path": "./packages/games/geuhae"
     },
     {

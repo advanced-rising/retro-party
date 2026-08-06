@@ -1,5 +1,5 @@
 {
-  "name": "retro-party",
+  "name": "sonisimsim",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.15.0",
@@ -21,6 +21,7 @@
     "@retro/room-kit": "workspace:*",
     "@retro/game-chosung": "workspace:*",
     "@retro/game-geuhae": "workspace:*",
-    "@retro/game-assoc": "workspace:*"
+    "@retro/game-assoc": "workspace:*",
+    "@retro/game-mulga": "workspace:*"
   }
 }

@@ -10,21 +10,38 @@ import type { PlayerId, TeamId } from '@retro/types'
 const RANK_POINTS = [100, 70, 50] as const
 const TAIL_POINTS = 30
 
-/** 문제 공개 후 이 시간 안에 맞히면 속도 보너스 */
-const FAST_ANSWER_MS = 5_000
-const FAST_MULTIPLIER = 1.5
+/**
+ * 속도 배수 — 라운드가 시작한 순간이 가장 높고, 끝날 때 1배가 된다.
+ *
+ * 예전에는 5초 안에 맞히면 1.5배, 아니면 1배였다. 그러면 1초에 맞힌 사람과
+ * 4초에 맞힌 사람이 같은 점수라서 "먼저 외친다"는 감각이 죽는다.
+ * 초 단위로 계속 깎이도록 바꿨다.
+ */
+export const SPEED_MAX = 2.0
+export const SPEED_MIN = 1.0
+
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
+
+/** 라운드 길이에 대한 상대 속도. 20초 게임과 90초 게임이 같은 곡선을 쓴다 */
+export function speedMultiplier(elapsedMs: number, roundMs: number): number {
+  if (roundMs <= 0) return SPEED_MAX
+  const progress = clamp01(elapsedMs / roundMs)
+  return SPEED_MIN + (SPEED_MAX - SPEED_MIN) * (1 - progress)
+}
 
 export interface ScoreInput {
   /** 0-based. 이 라운드에서 몇 번째로 맞혔는가 */
   readonly rank: number
   readonly elapsedMs: number
+  /** 이 게임의 라운드 길이. 속도 배수를 여기에 상대적으로 계산한다 */
+  readonly roundMs: number
   /** 힌트가 적게 열렸을 때 맞히면 가산 (그 해). 없으면 1 */
   readonly difficultyMultiplier?: number
 }
 
 export function roundScore(input: ScoreInput): number {
   const base = RANK_POINTS[input.rank] ?? TAIL_POINTS
-  const speed = input.elapsedMs <= FAST_ANSWER_MS ? FAST_MULTIPLIER : 1
+  const speed = speedMultiplier(input.elapsedMs, input.roundMs)
   const difficulty = input.difficultyMultiplier ?? 1
   return Math.round(base * speed * difficulty)
 }

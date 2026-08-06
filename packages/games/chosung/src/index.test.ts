@@ -95,7 +95,7 @@ test('정답 · 별칭 · 표기 흔들림을 받는다', () => {
   assert.equal(judge('아 이거 뭐였지').kind, 'ignored', '잡담은 판정하지 않는다')
 })
 
-test('빠른 정답에 속도 보너스가 붙는다', () => {
+test('빠를수록 점수가 높다 — 초 단위로 계속 깎인다', () => {
   const question = makeQuestion('speed')
   const fast = chosungGame.judge({
     question,

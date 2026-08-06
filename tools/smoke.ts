@@ -358,12 +358,15 @@ async function gateAllGames(): Promise<void> {
   const games = body.games ?? []
   check(games.length >= 3, '게임이 3종 이상 등록됐다', games.map((g) => g.name).join(' · '))
 
-  // 게임마다 board 의 모양이 다르다. 여기를 확인하지 않으면
-  // "고른 게임과 실제 도는 게임이 다르다" 를 못 잡는다
-  const SHAPE: Readonly<Record<string, string>> = {
-    chosung: 'chosung',
-    geuhae: 'hints',
-    assoc: 'role',
+  // 게임마다 board 모양이 다르고, **정답에 해당하는 필드도 다르다.**
+  //   · expect — 이 필드가 있어야 그 게임이 실제로 도는 것이다
+  //   · forbid — 이 필드가 나가면 정답이 샌 것이다
+  // 공통으로 'year' 를 막으면 「그때 그 가격」이 걸린다. 거기서 연도는 문제이지 정답이 아니다
+  const SHAPE: Readonly<Record<string, { expect: string; forbid: readonly string[] }>> = {
+    chosung: { expect: 'chosung', forbid: ['word', 'answers'] },
+    geuhae: { expect: 'hints', forbid: ['year', 'card'] },
+    assoc: { expect: 'role', forbid: ['word', 'answers', 'banned'] },
+    mulga: { expect: 'item', forbid: ['price'] },
   }
 
   for (const game of games) {
@@ -378,18 +381,18 @@ async function gateAllGames(): Promise<void> {
     const board = boards.at(-1)?.['view'] as Json | undefined
     check(board !== undefined, `${game.name} — board 가 온다`)
 
-    const marker = SHAPE[game.id]
+    const shape = SHAPE[game.id]
     check(
-      marker !== undefined && board !== undefined && marker in board,
+      shape !== undefined && board !== undefined && shape.expect in board,
       `${game.name} — ★ 고른 게임이 실제로 돈다`,
-      `기대 필드 ${marker} · 받은 필드 ${Object.keys(board ?? {}).join(',')}`,
+      `기대 필드 ${shape?.expect} · 받은 필드 ${Object.keys(board ?? {}).join(',')}`,
     )
 
-    // 어떤 게임이든 board 에 정답 필드가 있으면 안 된다.
-    // 단어 연상 출제자만 예외인데, 여기서는 b(맞히는 쪽) 를 본다
+    // 단어 연상 출제자만 정답을 본다. 여기서는 b(맞히는 쪽) 를 확인한다
+    const forbidden = shape?.forbid ?? []
     const leaked = boards.some((m) => {
       const v = m['view'] as Json | undefined
-      return v !== undefined && ('word' in v || 'answers' in v || 'year' in v)
+      return v !== undefined && forbidden.some((field) => field in v)
     })
     check(!leaked, `${game.name} — ★ 맞히는 사람 board 에 정답이 없다`)
 
@@ -521,7 +524,7 @@ async function gateSolo(): Promise<void> {
 // ── 실행 ─────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  console.log(`retro-party 관문 검증 — ${BASE}`)
+  console.log(`손이심심 관문 검증 — ${BASE}`)
 
   const clients = await gateCapacity()
   await gateChatLatency(clients)

@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'retro-party — 그때 그 시절 실시간 퀴즈',
-  description: '채팅으로 답을 외치는 실시간 방 게임. 삐삐부터 스타크래프트까지.',
+  title: '손이심심 — 그때 그 시절 실시간 퀴즈',
+  description: '손이 심심할 때 들어와서 채팅으로 답을 외치는 실시간 방 게임. 삐삐부터 스타크래프트까지.',
 }
 
 export const viewport: Viewport = {

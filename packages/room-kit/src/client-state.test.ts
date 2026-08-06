@@ -76,7 +76,7 @@ test('공개된 정답은 다음 라운드로 넘어갈 때 지워진다', () =>
 
   const nextRound = applyServerMessage(withReveal, {
     type: 'phase',
-    phase: { kind: 'playing', roundNo: 1, endsAtMs: 200 },
+    phase: { kind: 'playing', roundNo: 1, endsAtMs: 200, roundMs: 100 },
   })
   assert.equal(nextRound.board, null, '다음 문제 위에 지난 정답이 남으면 안 된다')
 })
@@ -84,9 +84,9 @@ test('공개된 정답은 다음 라운드로 넘어갈 때 지워진다', () =>
 test('일반 board 는 페이즈가 바뀌어도 유지된다', () => {
   const state = fold([
     snapshot,
-    { type: 'phase', phase: { kind: 'playing', roundNo: 0, endsAtMs: 100 } },
+    { type: 'phase', phase: { kind: 'playing', roundNo: 0, endsAtMs: 100, roundMs: 100 } },
     { type: 'board', view: { chosung: 'ㅃㅃ', solvedCount: 0 } },
-    { type: 'phase', phase: { kind: 'playing', roundNo: 0, endsAtMs: 100 } },
+    { type: 'phase', phase: { kind: 'playing', roundNo: 0, endsAtMs: 100, roundMs: 100 } },
   ])
   assert.deepEqual(state.board, { chosung: 'ㅃㅃ', solvedCount: 0 })
 })
@@ -105,7 +105,7 @@ test('나간 사람은 목록에서 사라지지 않고 끊김으로 남는다',
 test('채팅 버퍼는 무한히 자라지 않는다', () => {
   const many: ServerMessage[] = Array.from({ length: CHAT_BUFFER + 40 }, (_, i) => ({
     type: 'chat',
-    line: { from: P('a'), text: `줄 ${i}`, channel: 'all', correct: null },
+    line: { from: P('a'), text: `줄 ${i}`, channel: 'all', correct: null, note: null },
   }))
   const state = fold([snapshot, ...many])
   assert.equal(state.lines.length, CHAT_BUFFER)
@@ -137,7 +137,7 @@ test('정답 채팅은 강조 정보를 그대로 들고 온다', () => {
     snapshot,
     {
       type: 'chat',
-      line: { from: P('b'), text: '삐삐', channel: 'all', correct: { points: 150, rank: 0 } },
+      line: { from: P('b'), text: '삐삐', channel: 'all', correct: { points: 150, rank: 0 }, note: null },
     },
   ])
   assert.equal(state.lines[0]?.correct?.points, 150)

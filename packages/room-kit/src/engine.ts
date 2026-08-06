@@ -1,4 +1,5 @@
 import {
+  isUnlimited,
   minPlayersFor,
   ROOM_CAPACITY,
   type ChatChannel,
@@ -203,7 +204,7 @@ export function createEngine<Question, View>(
     presenterSpokeAtMs = nowMs
 
     return [
-      setPhase({ kind: 'playing', roundNo, endsAtMs: round.endsAtMs }),
+      setPhase({ kind: 'playing', roundNo, endsAtMs: round.endsAtMs, roundMs: game.meta.roundMs }),
       ...boardsAt(nowMs),
       { kind: 'alarm', atMs: nowMs + 1_000 },
     ]
@@ -303,6 +304,7 @@ export function createEngine<Question, View>(
     if (clean.text === null) return []
 
     let correct: ChatLine['correct'] = null
+    let note: string | null = null
     const effects: Effect[] = []
 
     const speaker = find(playerId)
@@ -318,6 +320,9 @@ export function createEngine<Question, View>(
     if (judgeable && question !== null && round !== null) {
       const judgement = game.judge({ question, round, playerId, text: clean.text, atMs: nowMs })
 
+      if (judgement.kind === 'wrong' || judgement.kind === 'partial') {
+        note = judgement.note ?? null
+      }
       if (judgement.kind === 'correct') {
         correct = { points: judgement.points, rank: judgement.rank }
         round = { ...round, solved: [...round.solved, playerId] }
@@ -337,7 +342,7 @@ export function createEngine<Question, View>(
     // 출제자가 말했다는 사실을 기록한다 (침묵 감시용)
     if (round !== null && round.presenter === playerId) presenterSpokeAtMs = nowMs
 
-    const line: ChatLine = { from: playerId, text: clean.text, channel, correct }
+    const line: ChatLine = { from: playerId, text: clean.text, channel, correct, note }
     effects.unshift({ kind: 'chat', line, senderTeam: teamOf(playerId) })
 
     if (correct !== null && question !== null && round !== null) {
@@ -534,6 +539,12 @@ export function createEngine<Question, View>(
         case 'reveal': {
           if (nowMs < phase.endsAtMs) return [{ kind: 'alarm', atMs: phase.endsAtMs }]
           const next = phase.roundNo + 1
+
+          // 무제한 — 사람이 한 명이라도 남아 있으면 계속 돈다.
+          // 아무도 없으면 멈춘다. 빈 방에서 문제가 도는 건 낭비다
+          if (isUnlimited(room.settings)) {
+            return room.participants.some((p) => p.connected) ? beginRound(next, nowMs) : finish()
+          }
           return next >= room.settings.rounds ? finish() : beginRound(next, nowMs)
         }
 

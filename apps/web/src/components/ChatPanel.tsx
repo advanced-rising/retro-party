@@ -175,6 +175,12 @@ function Line({
       {line.correct !== null && (
         <span className="tnum ml-1.5 font-bold">+{line.correct.points}</span>
       )}
+      {/* 「그때 그 가격」의 "더 비싸요" 같은 판정 한 줄. 본인에게만 의미가 있다 */}
+      {line.note !== null && (
+        <span className="ml-1.5 text-xs font-semibold" style={{ color: 'var(--amber)' }}>
+          {line.note}
+        </span>
+      )}
     </p>
   )
 }

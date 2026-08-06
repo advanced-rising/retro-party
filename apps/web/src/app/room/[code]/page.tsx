@@ -9,6 +9,7 @@ import { InAppBanner } from '@/components/InAppBanner'
 import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
 import { fetchRoomState, requestTicket } from '@/lib/api'
+import { gameIcon } from '@/lib/game-icon'
 import { API_BASE, loadIdentity } from '@/lib/identity'
 import { useRoomSocket } from '@/lib/room-socket'
 
@@ -134,13 +135,12 @@ function Room({
     setTimeout(() => setCopied(false), 1_600)
   }, [])
 
+  const GameIcon = gameIcon(GAME_ICONS[view.settings?.gameId ?? ''] ?? '')
   const isHost = view.you !== null && view.you === view.hostId
   const teamMode = view.settings?.mode === 'team'
   const solo = view.settings?.mode === 'solo'
   const here = view.participants.filter((p) => p.connected).length
   const needed = solo ? 1 : 2
-  const roundMs = view.settings?.gameId === 'geuhae' ? 60_000 : view.settings?.gameId === 'assoc' ? 90_000 : 20_000
-
   // 단어 연상에서 지금 설명하는 사람
   const presenterId: PlayerId | null =
     typeof view.board === 'object' &&
@@ -167,6 +167,8 @@ function Room({
           {code}
           <Copy size={13} aria-hidden />
         </button>
+
+        <GameIcon size={16} className="shrink-0" color="var(--text-lo)" aria-hidden />
 
         <span className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--text-lo)' }}>
           {copied ? (
@@ -195,7 +197,7 @@ function Room({
 
       {view.phase.kind === 'playing' && (
         <div className="pb-3">
-          <Timer endsAtMs={view.phase.endsAtMs} totalMs={roundMs} />
+          <Timer endsAtMs={view.phase.endsAtMs} totalMs={view.phase.roundMs} />
         </div>
       )}
 
@@ -264,6 +266,14 @@ function Room({
       )}
     </main>
   )
+}
+
+/** 방 화면은 게임 목록을 안 받으므로 아이콘 이름을 여기서 안다 */
+const GAME_ICONS: Readonly<Record<string, string>> = {
+  chosung: 'spell-check',
+  geuhae: 'calendar-clock',
+  assoc: 'messages-square',
+  mulga: 'coins',
 }
 
 function Splash() {

@@ -14,6 +14,7 @@ export interface GameInfo {
   readonly roundMs: number
   readonly hasPresenter: boolean
   readonly tagline: string
+  readonly icon: string
 }
 
 export interface CreateRoomInput {

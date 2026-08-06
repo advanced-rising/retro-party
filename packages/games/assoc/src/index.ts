@@ -150,7 +150,11 @@ export const assocGame: RoomGame<AssocQuestion, AssocView> = {
     return {
       kind: 'correct',
       rank,
-      points: roundScore({ rank, elapsedMs: input.atMs - input.round.startedAtMs }),
+      points: roundScore({
+        rank,
+        elapsedMs: input.atMs - input.round.startedAtMs,
+        roundMs: ROUND_MS,
+      }),
     }
   },
 

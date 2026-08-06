@@ -28,7 +28,7 @@ const UA = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
 } as const
 
-const TARGET = 'https://retro-party.example/room/ABCDEF'
+const TARGET = 'https://sonisimsim.example/room/ABCDEF'
 
 // ── ★ 정상 브라우저를 잘못 잡으면 안 된다 ────────────
 
@@ -77,7 +77,7 @@ test('카카오톡은 iOS·안드로이드 모두 자동 탈출한다', () => {
 })
 
 test('탈출 URL 이 원래 주소를 그대로 복원한다', () => {
-  const withQuery = 'https://retro-party.example/room/ABCDEF?ref=kakao&x=1'
+  const withQuery = 'https://sonisimsim.example/room/ABCDEF?ref=kakao&x=1'
   const plan = planEscape(UA.kakaoIos, withQuery)
   assert.equal(plan.kind, 'auto')
   if (plan.kind !== 'auto') return
@@ -91,7 +91,7 @@ test('안드로이드 인앱은 intent 로 크롬을 띄운다', () => {
   const plan = planEscape(UA.androidWebview, TARGET)
   assert.equal(plan.kind, 'auto')
   if (plan.kind !== 'auto') return
-  assert.ok(plan.url.startsWith('intent://retro-party.example/room/ABCDEF#Intent;'))
+  assert.ok(plan.url.startsWith('intent://sonisimsim.example/room/ABCDEF#Intent;'))
   assert.ok(plan.url.includes('package=com.android.chrome'))
   assert.ok(!plan.url.includes('intent://https://'), '스킴을 두 번 넣으면 안 된다')
 })

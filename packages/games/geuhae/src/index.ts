@@ -122,6 +122,7 @@ export const geuhaeGame: RoomGame<GeuhaeQuestion, GeuhaeView> = {
         points: roundScore({
           rank,
           elapsedMs,
+          roundMs: ROUND_MS,
           difficultyMultiplier: 1 + (MAX_HINTS - opened) * EARLY_BONUS_PER_HINT,
         }),
       }

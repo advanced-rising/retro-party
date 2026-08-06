@@ -42,7 +42,7 @@ const fakeGame: RoomGame<FakeQuestion, FakeView> = {
     return {
       kind: 'correct',
       rank,
-      points: roundScore({ rank, elapsedMs: input.atMs - input.round.startedAtMs }),
+      points: roundScore({ rank, elapsedMs: input.atMs - input.round.startedAtMs, roundMs: ROUND_MS }),
     }
   },
   isRoundOver: (_q, round: RoundState) =>
@@ -111,7 +111,7 @@ test('진행 중 어떤 Effect 에도 정답이 실리지 않는다', () => {
 // ── ★ 팀 채널 격리 ──────────────────────────────────
 
 test('팀 채널은 같은 팀에게만 간다', () => {
-  const line = { from: P('a'), text: ANSWER, channel: 'team' as const, correct: null }
+  const line = { from: P('a'), text: ANSWER, channel: 'team' as const, correct: null, note: null }
   const effect: Effect = { kind: 'chat', line, senderTeam: 0 }
 
   assert.equal(shouldDeliver(effect, 0), true, '같은 팀은 받는다')

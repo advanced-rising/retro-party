@@ -79,9 +79,17 @@ export interface JudgeInput<Question> {
 export type Judgement =
   /** 정답 후보가 아닌 잡담. 채팅에는 그대로 흐른다 */
   | { readonly kind: 'ignored' }
-  | { readonly kind: 'wrong' }
-  | { readonly kind: 'partial'; readonly points: number }
+  | { readonly kind: 'wrong'; readonly note?: string }
+  | { readonly kind: 'partial'; readonly points: number; readonly note?: string }
   | { readonly kind: 'correct'; readonly points: number; readonly rank: number }
+
+/**
+ * 판정에 붙는 한 줄 (`note`) — 「그때 그 가격」의 "더 비싸요" 같은 것.
+ *
+ * 이게 없으면 근접 판정 게임이 성립하지 않는다. 틀렸다는 사실만으로는
+ * 다음에 뭘 쳐야 할지 알 수 없어서 채팅이 죽는다.
+ * **정답을 유추할 수 있는 값을 담지 않는다** — 방향만 알려준다.
+ */
 
 export interface RoundState {
   readonly roundNo: number

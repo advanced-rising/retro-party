@@ -22,6 +22,9 @@
       ],
       "@retro/game-assoc": [
         "../packages/games/assoc/src/index.ts"
+      ],
+      "@retro/game-mulga": [
+        "../packages/games/mulga/src/index.ts"
       ]
     }
   },
@@ -43,6 +46,9 @@
     },
     {
       "path": "../packages/games/assoc"
+    },
+    {
+      "path": "../packages/games/mulga"
     }
   ]
 }

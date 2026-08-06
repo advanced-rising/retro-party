@@ -23,7 +23,13 @@ export type TeamSize = 2 | 3 | 4
 export type RoomPhase =
   | { readonly kind: 'lobby' }
   | { readonly kind: 'countdown'; readonly startsAtMs: number }
-  | { readonly kind: 'playing'; readonly roundNo: number; readonly endsAtMs: number }
+  | {
+      readonly kind: 'playing'
+      readonly roundNo: number
+      readonly endsAtMs: number
+      /** 이 라운드의 총 길이. 타이머 바가 게임별 상수를 알 필요가 없게 한다 */
+      readonly roundMs: number
+    }
   | { readonly kind: 'reveal'; readonly roundNo: number; readonly endsAtMs: number }
   | { readonly kind: 'result' }
 
@@ -47,9 +53,13 @@ export interface Participant {
 /** 방 제목. 목록에 그대로 노출되므로 길이를 제한하고 정규화한다 */
 export const MAX_ROOM_TITLE = 20
 
+/** rounds 가 이 값이면 무제한. 사람이 남아 있는 한 계속 돈다 */
+export const UNLIMITED_ROUNDS = 0
+
 export interface RoomSettings {
   readonly gameId: GameId
   readonly mode: RoomMode
+  /** 0 이면 무제한 — UNLIMITED_ROUNDS */
   readonly rounds: number
   readonly teamSize: TeamSize | null // mode === 'team' 일 때만
   /** 방 목록에 띄울지. 끄면 코드로만 들어온다 */
@@ -85,4 +95,8 @@ export function activePlayers(state: RoomState): readonly Participant[] {
 
 export function canStart(state: RoomState): boolean {
   return activePlayers(state).length >= MIN_PLAYERS_TO_START
+}
+
+export function isUnlimited(settings: RoomSettings): boolean {
+  return settings.rounds <= UNLIMITED_ROUNDS
 }
