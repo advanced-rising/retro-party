@@ -1,0 +1,38 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+.next/
+out/
+dist/
+build/
+
+# env
+.env
+.env.*
+!.env.example
+
+# data (시세 원본은 레포에 넣지 않는다)
+data/raw/
+data/cache/
+*.csv
+*.parquet
+*.db
+*.sqlite
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# logs
+*.log
+npm-debug.log*
