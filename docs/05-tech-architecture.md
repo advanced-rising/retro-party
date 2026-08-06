@@ -278,6 +278,10 @@ CREATE TABLE match_players (
   PRIMARY KEY (match_id, nickname)
 );
 
+-- 레벨 · 칭호 · 랭크 테이블은 10 문서 §5 참조
+--   user_progress · titles · user_titles · level_curve
+--   daily_scores · rank_profiles · season_hall
+
 CREATE TABLE user_stats (                -- 집계 (배치 갱신)
   user_id       UUID PRIMARY KEY REFERENCES users(id),
   matches       INTEGER DEFAULT 0,
