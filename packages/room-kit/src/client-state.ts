@@ -4,6 +4,7 @@ import type {
   PlayerId,
   RoomPhase,
   RoomSettings,
+  RoundRecord,
   ServerMessage,
   TeamId,
 } from '@retro/types'
@@ -34,6 +35,8 @@ export interface ClientState {
   /** 게임별 문제 뷰. 타입은 게임 모듈이 안다 */
   readonly board: unknown
   readonly lines: readonly ChatLine[]
+  /** 판이 끝나면 채워진다. 진행 중에는 비어 있다 */
+  readonly history: readonly RoundRecord[]
   readonly error: string | null
 }
 
@@ -48,6 +51,7 @@ export function initialClientState(): ClientState {
     yourTeam: null,
     board: null,
     lines: [],
+    history: [],
     error: null,
   }
 }
@@ -80,7 +84,9 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
       // 새 라운드로 넘어갈 때 이전 정답 카드를 지운다.
       // 안 지우면 다음 문제 위에 지난 답이 남아 있다
       const stale = isRevealBoard(state.board) && message.phase.kind !== 'reveal'
-      return { ...state, phase: message.phase, board: stale ? null : state.board }
+      // 새 판이 시작되면 지난 기록도 치운다
+      const history = message.phase.kind === 'countdown' ? [] : state.history
+      return { ...state, phase: message.phase, board: stale ? null : state.board, history }
     }
 
     case 'joined': {
@@ -111,6 +117,9 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
 
     case 'score':
       return { ...state, scores: new Map(message.scores) }
+
+    case 'history':
+      return { ...state, history: message.rounds }
 
     case 'chat':
       return { ...state, lines: [...state.lines, message.line].slice(-CHAT_BUFFER) }

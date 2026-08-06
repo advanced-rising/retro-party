@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { SendHorizontal } from 'lucide-react'
 import { EMOTES, MAX_CHAT_LENGTH, type ChatChannel, type ChatLine, type Participant, type PlayerId } from '@retro/types'
 
@@ -156,7 +156,7 @@ function Line({
     team === 0 ? 'var(--blue)' : team === 1 ? 'var(--red)' : mine ? 'var(--text-hi)' : 'var(--text-lo)'
 
   return (
-    <motion.p
+    <m.p
       className="rounded-md px-2 py-1 text-sm leading-relaxed"
       style={{
         background: correct ? 'var(--lime-wash)' : 'transparent',
@@ -185,6 +185,6 @@ function Line({
           {line.note}
         </span>
       )}
-    </motion.p>
+    </m.p>
   )
 }

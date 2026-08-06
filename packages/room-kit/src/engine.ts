@@ -9,6 +9,8 @@ import {
   type RoomSettings,
   type RoomState,
   type ServerErrorCode,
+  type RoundRecord,
+  type RoundSolver,
   type ServerMessage,
   type TeamId,
 } from '@retro/types'
@@ -115,6 +117,10 @@ export function createEngine<Question, View>(
   let seatOrder: readonly PlayerId[] = init.room.participants.map((p) => p.playerId)
   /** 출제자가 마지막으로 말한 시각. 오래 조용하면 라운드를 넘긴다 — 02 문서 §3.8 */
   let presenterSpokeAtMs = 0
+  /** 이번 판의 라운드 기록. 결과 화면에서 되짚는다 */
+  let history: RoundRecord[] = []
+  /** 이번 라운드에 누가 언제 맞혔는가 */
+  let solvers: RoundSolver[] = []
 
   const rateLimiter: RateLimiter = createRateLimiter()
 
@@ -215,6 +221,7 @@ export function createEngine<Question, View>(
     })
 
     presenterSpokeAtMs = nowMs
+    solvers = []
 
     return [
       setPhase({ kind: 'playing', roundNo, endsAtMs: round.endsAtMs, roundMs: game.meta.roundMs }),
@@ -247,6 +254,9 @@ export function createEngine<Question, View>(
     const endsAtMs = nowMs + REVEAL_MS
     const roundNo = round.roundNo
 
+    // 정답은 공개된 지금부터 기록에 들어간다. 그 전에는 어디에도 안 남는다
+    history = [...history, { roundNo, answer: revealed.answer, solvers: [...solvers] }]
+
     const effects: Effect[] = [
       setPhase({ kind: 'reveal', roundNo, endsAtMs }),
       {
@@ -270,6 +280,7 @@ export function createEngine<Question, View>(
     return [
       setPhase({ kind: 'result' }),
       { kind: 'broadcast', message: { type: 'score', scores: scoreList() } },
+      { kind: 'broadcast', message: { type: 'history', rounds: history } },
       { kind: 'matchOver', ranking },
     ]
   }
@@ -285,6 +296,10 @@ export function createEngine<Question, View>(
     }
 
     const effects: Effect[] = [...seatTeams()]
+
+    // 새 판이 시작되면 지난 기록은 지운다
+    history = []
+    solvers = []
 
     const scores = new Map<PlayerId, number>()
     for (const p of room.participants) scores.set(p.playerId, 0)
@@ -339,6 +354,11 @@ export function createEngine<Question, View>(
       if (judgement.kind === 'correct') {
         correct = { points: judgement.points, rank: judgement.rank }
         round = { ...round, solved: [...round.solved, playerId] }
+        solvers.push({
+          playerId,
+          points: judgement.points,
+          elapsedMs: nowMs - round.startedAtMs,
+        })
       }
       if (judgement.kind === 'partial') {
         // 부분 점수를 한 번 받았다는 사실을 남긴다. 안 남기면 ±1년을 남발한다

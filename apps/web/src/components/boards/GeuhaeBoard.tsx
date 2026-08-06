@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 export interface GeuhaeView {
@@ -34,11 +34,11 @@ export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
       <ol className="mt-3 w-full space-y-1.5 text-left">
         <AnimatePresence initial={false}>
           {view.hints.map((hint, i) => (
-            <motion.li
+            <m.li
               key={hint}
               layout
-              initial={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 320, damping: 30 }}
               className="flex gap-2.5 text-sm"
               style={{ color: 'var(--text)' }}
@@ -47,7 +47,7 @@ export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
                 {i + 1}
               </span>
               {hint}
-            </motion.li>
+            </m.li>
           ))}
         </AnimatePresence>
       </ol>
@@ -55,14 +55,11 @@ export function GeuhaeBoard({ view }: { view: GeuhaeView }) {
       <div className="mt-4 flex items-center justify-center gap-3">
         <span className="flex gap-1" aria-label={`힌트 ${view.hints.length}/${view.totalHints}`}>
           {Array.from({ length: view.totalHints }, (_, i) => (
-            <motion.span
+            <m.span
               key={i}
               className="h-1.5 w-1.5 rounded-full"
-              animate={{
-                backgroundColor: i < view.hints.length ? 'var(--lime)' : 'var(--border)',
-                scale: i === view.hints.length - 1 ? [1, 1.6, 1] : 1,
-              }}
-              transition={{ duration: 0.4 }}
+              animate={{ backgroundColor: i < view.hints.length ? 'var(--lime)' : 'var(--border)' }}
+              transition={{ duration: 0.25 }}
             />
           ))}
         </span>

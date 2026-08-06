@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Check,
+  Dices,
   Infinity as InfinityIcon,
   Loader2,
   Lock,
@@ -17,6 +18,7 @@ import { TOPICS, type RoomSummary, type TopicId } from '@retro/types'
 import { topicIcon } from '@/lib/game-icon'
 import { InAppBanner } from '@/components/InAppBanner'
 import { createRoom, fetchGames, fetchRooms, quickJoinTarget, type GameInfo } from '@/lib/api'
+import { makeNickname } from '@retro/room-kit'
 import { gameIcon } from '@/lib/game-icon'
 import { loadIdentity, saveNickname } from '@/lib/identity'
 
@@ -110,22 +112,38 @@ export default function Home() {
         </p>
       </header>
 
+      {/* 닉네임은 들어오는 순간 자동으로 만들어진다. 가입도, 입력도 필요 없다 */}
       <section className="space-y-2">
         <label
           htmlFor="nickname"
           className="block text-xs font-semibold"
           style={{ color: 'var(--text-dim)' }}
         >
-          닉네임
+          닉네임 · 자동으로 지어드렸어요
         </label>
-        <input
-          id="nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          maxLength={12}
-          className="w-full rounded-lg border px-3 py-2.5 text-base outline-none"
-          style={{ background: 'var(--bg-surface)', color: 'var(--text-hi)' }}
-        />
+        <div className="flex gap-2">
+          <input
+            id="nickname"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            maxLength={12}
+            className="min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-base outline-none"
+            style={{ background: 'var(--bg-surface)', color: 'var(--text-hi)' }}
+          />
+          <button
+            type="button"
+            onClick={() => setNickname(makeNickname())}
+            className="shrink-0 rounded-lg border px-3 py-2.5"
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-lo)' }}
+            aria-label="닉네임 다시 뽑기"
+            title="다시 뽑기"
+          >
+            <Dices size={16} aria-hidden />
+          </button>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+          마음에 안 들면 주사위를 누르거나 직접 고치세요
+        </p>
       </section>
 
       <button

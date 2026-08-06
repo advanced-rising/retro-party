@@ -184,6 +184,30 @@ pnpm contrast     # 32건. 실패 시 exit 1
 
 ---
 
+## 2.5 모션 — Motion (motion.dev)
+
+**`motion.div` 가 아니라 `m.div` 를 쓴다.** 앱이 `LazyMotion` 으로 감싸져 있어서
+(`components/MotionRoot.tsx`) 섞어 쓰면 번들 이득이 사라진다.
+
+```
+lib/motion.ts   스프링·이징 프리셋. 컴포넌트마다 손으로 적지 않는다
+```
+
+### 지키는 것
+
+| | |
+|---|---|
+| **GPU 속성만** | transform · opacity · filter. width/height/top 은 매 프레임 레이아웃을 다시 계산한다. 게이지도 width 가 아니라 **scaleX + transformOrigin** |
+| **reduced-motion 을 JS 에서** | globals.css 규칙은 CSS 만 막는다. Motion 은 인라인 스타일이라 `useMotionOk()` 로 꺼야 한다 |
+| **가만히 있는 건 안 움직인다** | 무한 반복 펄스를 여러 곳에 두면 화면이 울렁거려 읽히지 않는다. 모션은 **상태가 바뀌는 순간**에만 |
+| **값을 굴리지 않는다** | 점수를 스프링으로 굴리면 숫자가 흔들려 안 읽힌다. 값은 즉시 바뀌고 오른 사실만 한 번 튄다 |
+| **blur 남발 금지** | 흐물거려 보이고 합성 비용도 크다 |
+
+**가장 효과가 큰 자리**: 참가자 목록의 `layout`(FLIP). 점수 순 정렬이라 누가 맞히면
+순위가 실제로 밀린다 — 그 순간이 이 게임에서 제일 통쾌하다.
+
+---
+
 ## 3. TypeScript — 타입은 필수다
 
 **모든 코드는 TypeScript.** `tsconfig.base.json` 을 상속하고, `strict` 만으로 부족한 것까지 켜져 있다.

@@ -17,6 +17,9 @@ export const TOPIC_IDS = [
   'history',
   'world',
   'sports',
+  'football',
+  'baseball',
+  'basketball',
 ] as const
 
 export type TopicId = (typeof TOPIC_IDS)[number]
@@ -38,7 +41,10 @@ export const TOPICS: readonly TopicInfo[] = [
   { id: 'society', label: '정치·사회', hint: '선거 · 사건 · 제도', icon: 'landmark' },
   { id: 'history', label: '한국사', hint: '조선부터 근현대까지', icon: 'scroll' },
   { id: 'world', label: '세계사', hint: '전쟁 · 혁명 · 인물', icon: 'globe' },
-  { id: 'sports', label: '스포츠', hint: '올림픽 · 월드컵 · 프로야구', icon: 'trophy' },
+  { id: 'sports', label: '스포츠 종합', hint: '올림픽 · 종목 전반 · 인물', icon: 'trophy' },
+  { id: 'football', label: '축구', hint: '월드컵 · K리그 · 해외파', icon: 'goal' },
+  { id: 'baseball', label: '야구', hint: 'KBO · 한국시리즈 · 메이저리그', icon: 'circle-dot' },
+  { id: 'basketball', label: '농구', hint: 'KBL · NBA · 슬램덩크 세대', icon: 'dribbble' },
 ]
 
 const BY_ID = new Map(TOPICS.map((t) => [t.id, t]))

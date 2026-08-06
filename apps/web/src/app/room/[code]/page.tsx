@@ -7,6 +7,7 @@ import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
 import { InAppBanner } from '@/components/InAppBanner'
+import { MatchHistory } from '@/components/MatchHistory'
 import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
 import { fetchRoomState, requestTicket } from '@/lib/api'
@@ -222,6 +223,12 @@ function Room({
         gameId={view.settings?.gameId ?? ''}
         roomCode={code}
       />
+
+      {view.phase.kind === 'result' && view.history.length > 0 && (
+        <div className="min-h-0 overflow-y-auto py-3">
+          <MatchHistory rounds={view.history} participants={view.participants} />
+        </div>
+      )}
 
       <div className="py-3">
         <Roster

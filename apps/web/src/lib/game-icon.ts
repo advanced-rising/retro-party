@@ -2,8 +2,11 @@ import {
   CalendarClock,
   Clapperboard,
   Coins,
+  CircleDot,
   Cpu,
+  Dribbble,
   Gamepad2,
+  Goal,
   Globe,
   Landmark,
   MessagesSquare,
@@ -45,6 +48,9 @@ const TOPIC_ICONS: Readonly<Record<string, LucideIcon>> = {
   scroll: Scroll,
   globe: Globe,
   trophy: Trophy,
+  goal: Goal,
+  'circle-dot': CircleDot,
+  dribbble: Dribbble,
 }
 
 export function topicIcon(name: string): LucideIcon {

@@ -37,6 +37,26 @@ export interface ChatLine {
   readonly note: string | null
 }
 
+/**
+ * 라운드 기록 — 판이 끝나고 되짚어 보는 용도.
+ *
+ * 정답은 **공개된 뒤에만** 여기 실린다. 진행 중에는 절대 나가지 않는다.
+ * "아 그거였어?" 가 결과 화면에서 나와야 다음 판을 누른다 (02 문서 §1.4).
+ */
+export interface RoundRecord {
+  readonly roundNo: number
+  readonly answer: string
+  /** 맞힌 순서대로. 아무도 못 맞혔으면 빈 배열 */
+  readonly solvers: readonly RoundSolver[]
+}
+
+export interface RoundSolver {
+  readonly playerId: PlayerId
+  readonly points: number
+  /** 라운드 시작부터 맞히기까지 걸린 시간 */
+  readonly elapsedMs: number
+}
+
 export type ServerMessage =
   | {
       readonly type: 'snapshot'
@@ -55,6 +75,8 @@ export type ServerMessage =
   /** 게임별 문제 뷰. 참가자마다 다르다 — viewFor 가 정답을 걸러낸 결과 */
   | { readonly type: 'board'; readonly view: unknown }
   | { readonly type: 'score'; readonly scores: readonly (readonly [PlayerId, number])[] }
+  /** 판이 끝날 때 한 번. 지나온 라운드를 통째로 돌려준다 */
+  | { readonly type: 'history'; readonly rounds: readonly RoundRecord[] }
   | { readonly type: 'error'; readonly code: ServerErrorCode; readonly message: string }
 
 export type ServerErrorCode =
