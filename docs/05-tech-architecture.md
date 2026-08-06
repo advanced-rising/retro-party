@@ -358,12 +358,12 @@ geuttae/
 
 | 테스트 | 내용 | 중요도 |
 |---|---|---|
-| `game:view-leak` | `viewFor` 결과에 정답이 없는가 (출제자 제외) | 🔴 최우선 |
-| `room:team-chat-isolation` | 팀 채널 메시지가 상대 팀 소켓에 안 가는가 | 🔴 최우선 |
-| `room:chat-not-stored` | 채팅 100건 후 DO storage 미증가 | 🔴 |
-| `ai:determinism` | 같은 시드 → 같은 AI 행동 계획 | 🟡 |
-| `room:reconnect` | 60초 내 재접속 시 상태 복원 | 🟡 |
-| `game:judge` | 정답 정규화 (`97`, `1997년`, 공백) | 🟡 |
+| `game:view-leak` | `viewFor` 결과에 정답이 없는가 (출제자 제외) | ● 최우선 |
+| `room:team-chat-isolation` | 팀 채널 메시지가 상대 팀 소켓에 안 가는가 | ● 최우선 |
+| `room:chat-not-stored` | 채팅 100건 후 DO storage 미증가 | ● |
+| `ai:determinism` | 같은 시드 → 같은 AI 행동 계획 | |
+| `room:reconnect` | 60초 내 재접속 시 상태 복원 | |
+| `game:judge` | 정답 정규화 (`97`, `1997년`, 공백) | |
 
 ## 10. 열려 있는 결정 사항
 
