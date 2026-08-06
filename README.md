@@ -68,20 +68,23 @@
 | [05. 로드맵](docs/05-roadmap.md) | Phase 0~4, 관문, 비용 |
 | [06. 법무·리스크](docs/06-legal-risk.md) | 사실 오류, 저작권, 개인정보 |
 | [07. 게임 라인업](docs/07-game-lineup.md) | 2번째 이후 게임 후보 + 추가 절차 |
+| [08. 멀티플레이](docs/08-multiplayer.md) | Durable Objects 기반 대전, GameModule 멀티 훅 |
 
 ## 기술 스택
 
 ```
 Cloudflare Workers ── Next.js (OpenNext)     프론트 / SSR / 공유 카드
 Cloudflare Workers ── Platform API           데일리 발급 · 채점 · 랭킹
-Durable Objects · KV · R2 · Queues · Cron
+Durable Objects                              랭킹 집계 · ★ 멀티플레이 방 (WebSocket)
+KV · R2 · Queues · Cron · Turnstile
         │  Hyperdrive
 PostgreSQL           계정 · 플레이 · 랭킹 · 힌트 카드 DB
         │
-NestJS  (Phase 2~)   관리자 · 오류 신고 · 배치
+NestJS  (Phase 2~)   관리자 · 오류 신고 · 콘텐츠 배치
 ```
 
-**MVP는 백엔드 서버 없이 Workers + PostgreSQL만으로 돌아간다.**
+**상태를 가진 서버는 Durable Objects가 맡는다** — 멀티플레이 방도 여기다 (08 문서).
+NestJS는 트래픽 경로 밖의 배치·관리자용이라 MVP에는 없어도 된다.
 
 ## 콘텐츠는 Claude Code로 만든다
 

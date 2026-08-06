@@ -35,6 +35,8 @@
 │  │ Durable Objects                                            ││
 │  │  Leaderboard   일간/주간 랭킹 (게임별 샤딩)                ││
 │  │  DailyPuzzle   오늘의 퍼즐 캐시 + 통계 집계                ││
+│  │  MatchRoom  ★ 멀티플레이 방 · WebSocket  (Phase 3, 08 문서)││
+│  │  Lobby      ★ 랜덤 매칭 대기열          (Phase 4)         ││
 │  └────────────────────────────────────────────────────────────┘│
 │                                                                │
 │  KV(퍼즐·설정)   R2(이미지)   Queues   Cron   Turnstile        │
@@ -57,20 +59,31 @@
                     └──────────────────────────┘
 ```
 
-### 2.1 NestJS의 자리 — Phase 2부터
+### 2.1 세 서버의 역할 — 헷갈리기 쉬운 부분
+
+| 컴포넌트 | 담당 | 상태 | 멀티플레이 |
+|---|---|---|---|
+| **Workers** | HTTP 처리, 채점, 랭킹 조회 | 무상태 | 관계 없음 |
+| **Durable Objects** | 랭킹 집계, **멀티플레이 방 + WebSocket** | 상태 보유 | ✅ **여기가 게임 서버** |
+| **NestJS** | 콘텐츠 배치, 관리자, 오류 신고 | — | 관계 없음 |
+
+**"상태를 가진 서버"는 Durable Objects다.** 멀티플레이 대전도 여기서 돌아간다 (08 문서).
+NestJS는 트래픽 경로 밖의 배치 작업용이라 **성격이 완전히 다르다.**
+
+### NestJS 도입은 Phase 2부터
 
 **Phase 0~1에는 NestJS가 필요 없다.** 콘텐츠를 Claude Code로 만들기 때문이다 (02 문서 §3.0).
 
 ```
 Phase 0~1   Claude Code → data/facts/*.json → validate.mjs → seed.mjs → PG
-            NestJS 없음. 스크립트 3개면 끝난다.
+            스크립트 3개면 끝난다.
 
-Phase 2+    관리자 UI, 오류 신고 처리, 난이도 보정 배치가 쌓이면 NestJS 도입
+Phase 2+    관리자 UI, 오류 신고 처리, 난이도 보정 배치가 쌓이면 도입
             (API 파이프라인으로 전환한다면 그것도 여기)
 ```
 
-**MVP에서 백엔드 서버를 안 띄워도 된다는 뜻이다.** Workers + PG만으로 게임이 돌아간다.
-아래 구조는 Phase 2 이후의 최종형이다.
+MVP는 **Workers + Durable Objects + PostgreSQL**로 완결된다.
+아래 구조도의 NestJS는 Phase 2 이후의 모습이다.
 
 **NestJS는 사용자 트래픽 경로 밖에 있다.** 플레이어 요청은 Workers에서 완결된다.
 
@@ -116,8 +129,13 @@ export interface GameModule<Puzzle, Submission, Result> {
   // ── 클라이언트 ───────────────────────────────
   Client: React.ComponentType<GameProps<PublicPuzzle, Submission>>
   ShareCard: (result: Result) => ShareCardData
+
+  // ── 멀티플레이 (선택) ★ Phase 2에 인터페이스만 확정 ──
+  multiplayer?: MultiplayerSpec<Puzzle, Submission>
 }
 ```
+
+**`multiplayer` 훅은 Phase 2에 정의만 하고 구현은 Phase 3에 한다.** 지금 싱글 전용으로 확정해버리면 나중에 모든 게임을 갈아엎어야 한다. 상세는 08 문서.
 
 ### 3.2 플랫폼이 제공하는 것
 
