@@ -2,7 +2,17 @@
 
 import { use, useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Copy, FastForward, Lightbulb, LogOut, Lock, Users, WifiOff } from 'lucide-react'
+import {
+  Copy,
+  FastForward,
+  Lightbulb,
+  ListChecks,
+  Lock,
+  LogOut,
+  Users,
+  WifiOff,
+  X,
+} from 'lucide-react'
 import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
@@ -131,6 +141,7 @@ function Room({
     ticket,
   )
   const [copied, setCopied] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
 
   const copy = useCallback(() => {
     void navigator.clipboard.writeText(window.location.href)
@@ -196,6 +207,25 @@ function Room({
             {here}/{ROOM_CAPACITY}
           </span>
         </span>
+
+        {/* 지나온 문제 다시 보기. 무제한 판에서는 이게 유일한 통로다 */}
+        {view.history.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold"
+            style={{
+              background: showHistory ? 'var(--lime-wash)' : 'var(--bg-elevated)',
+              borderColor: showHistory ? 'var(--lime)' : 'var(--border)',
+              color: showHistory ? 'var(--lime)' : 'var(--text-lo)',
+            }}
+            aria-label="정답 기록 보기"
+            aria-pressed={showHistory}
+          >
+            <ListChecks size={13} aria-hidden />
+            <span className="tnum">{view.history.length}</span>
+          </button>
+        )}
 
         {/* 나가기. 소켓이 닫히면 서버가 알아서 정리한다 (engine.leave) */}
         <button
@@ -275,10 +305,25 @@ function Room({
         presenterName={presenterName}
         gameId={view.settings?.gameId ?? ''}
         roomCode={code}
+        strokes={view.strokes}
+        onStroke={actions.stroke}
+        onCanvas={actions.canvas}
       />
 
-      {view.phase.kind === 'result' && view.history.length > 0 && (
-        <div className="min-h-0 overflow-y-auto py-3">
+      {/* 결과 화면에서는 항상, 진행 중에는 버튼을 눌렀을 때만 */}
+      {(view.phase.kind === 'result' || showHistory) && view.history.length > 0 && (
+        <div className="relative min-h-0 overflow-y-auto py-3">
+          {showHistory && view.phase.kind !== 'result' && (
+            <button
+              type="button"
+              onClick={() => setShowHistory(false)}
+              className="absolute right-0 top-3 rounded-md border p-1"
+              style={{ background: 'var(--bg-elevated)', color: 'var(--text-lo)' }}
+              aria-label="기록 닫기"
+            >
+              <X size={12} aria-hidden />
+            </button>
+          )}
           <MatchHistory rounds={view.history} participants={view.participants} />
         </div>
       )}
@@ -354,6 +399,7 @@ const GAME_ICONS: Readonly<Record<string, string>> = {
   geuhae: 'calendar-clock',
   assoc: 'messages-square',
   mulga: 'coins',
+  sketch: 'pencil',
 }
 
 function Splash() {

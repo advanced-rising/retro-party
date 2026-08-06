@@ -28,6 +28,9 @@
       ],
       "@retro/game-mulga": [
         "../../packages/games/mulga/src/index.ts"
+      ],
+      "@retro/game-sketch": [
+        "../../packages/games/sketch/src/index.ts"
       ]
     }
   },
@@ -53,6 +56,9 @@
     },
     {
       "path": "../../packages/games/mulga"
+    },
+    {
+      "path": "../../packages/games/sketch"
     }
   ]
 }

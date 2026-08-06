@@ -10,7 +10,8 @@
     "@retro/game-chosung": "workspace:*",
     "@retro/game-geuhae": "workspace:*",
     "@retro/game-assoc": "workspace:*",
-    "@retro/game-mulga": "workspace:*"
+    "@retro/game-mulga": "workspace:*",
+    "@retro/game-sketch": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",

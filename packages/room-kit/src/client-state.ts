@@ -5,6 +5,7 @@ import type {
   RoomPhase,
   RoomSettings,
   RoundRecord,
+  SketchStroke,
   ServerMessage,
   TeamId,
 } from '@retro/types'
@@ -39,6 +40,8 @@ export interface ClientState {
   readonly history: readonly RoundRecord[]
   /** 이 라운드의 스킵 표 현황 */
   readonly skip: { readonly votes: number; readonly needed: number; readonly you: boolean }
+  /** 스케치 획. 라운드가 바뀌면 비워진다 */
+  readonly strokes: readonly SketchStroke[]
   /** 이 라운드의 힌트 표 현황 */
   readonly hint: {
     readonly votes: number
@@ -61,6 +64,7 @@ export function initialClientState(): ClientState {
     board: null,
     lines: [],
     history: [],
+    strokes: [],
     skip: { votes: 0, needed: 0, you: false },
     hint: { votes: 0, needed: 0, you: false, available: true },
     error: null,
@@ -96,6 +100,8 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
       // 안 지우면 다음 문제 위에 지난 답이 남아 있다
       const stale = isRevealBoard(state.board) && message.phase.kind !== 'reveal'
       // 새 판이 시작되면 지난 기록도 치운다
+      // 기록은 **판이 새로 시작될 때만** 비운다. 라운드가 넘어갈 때 비우면
+      // 무제한 판에서 지나온 문제를 다시 볼 수 없다
       const history = message.phase.kind === 'countdown' ? [] : state.history
       // 라운드가 바뀌면 스킵 표도 초기화된다
       const fresh = message.phase.kind === 'playing'
@@ -104,6 +110,7 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
         phase: message.phase,
         board: stale ? null : state.board,
         history,
+        strokes: fresh ? [] : state.strokes,
         skip: fresh ? { votes: 0, needed: 0, you: false } : state.skip,
         hint: fresh ? { votes: 0, needed: 0, you: false, available: true } : state.hint,
       }
@@ -146,6 +153,12 @@ export function applyServerMessage(state: ClientState, message: ServerMessage): 
         ...state,
         skip: { votes: message.votes, needed: message.needed, you: message.you },
       }
+
+    case 'stroke':
+      return { ...state, strokes: [...state.strokes, message.stroke] }
+
+    case 'sketch':
+      return { ...state, strokes: message.strokes }
 
     case 'hint':
       return {

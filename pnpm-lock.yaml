@@ -20,6 +20,9 @@ importers:
       '@retro/game-mulga':
         specifier: workspace:*
         version: link:packages/games/mulga
+      '@retro/game-sketch':
+        specifier: workspace:*
+        version: link:packages/games/sketch
       '@retro/room-kit':
         specifier: workspace:*
         version: link:packages/room-kit
@@ -47,6 +50,9 @@ importers:
       '@retro/game-mulga':
         specifier: workspace:*
         version: link:../../packages/games/mulga
+      '@retro/game-sketch':
+        specifier: workspace:*
+        version: link:../../packages/games/sketch
       '@retro/room-kit':
         specifier: workspace:*
         version: link:../../packages/room-kit
@@ -126,6 +132,15 @@ importers:
         version: link:../../types
 
   packages/games/mulga:
+    dependencies:
+      '@retro/room-kit':
+        specifier: workspace:*
+        version: link:../../room-kit
+      '@retro/types':
+        specifier: workspace:*
+        version: link:../../types
+
+  packages/games/sketch:
     dependencies:
       '@retro/room-kit':
         specifier: workspace:*

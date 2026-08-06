@@ -26,6 +26,12 @@ export interface RoomActions {
   patchSettings(patch: Partial<RoomSettings>): void
   skip(): void
   hint(): void
+  stroke(stroke: {
+    color: string
+    width: number
+    points: readonly { x: number; y: number }[]
+  }): void
+  canvas(action: 'clear' | 'undo'): void
 }
 
 const isServerMessage = (value: unknown): value is ServerMessage =>
@@ -107,10 +113,19 @@ export function useRoomSocket(
   const again = useCallback(() => emit({ type: 'again' }), [emit])
   const skip = useCallback(() => emit({ type: 'skip' }), [emit])
   const hint = useCallback(() => emit({ type: 'hint' }), [emit])
+  const stroke = useCallback(
+    (s: { color: string; width: number; points: readonly { x: number; y: number }[] }) =>
+      emit({ type: 'stroke', ...s }),
+    [emit],
+  )
+  const canvas = useCallback(
+    (action: 'clear' | 'undo') => emit({ type: 'canvas', action }),
+    [emit],
+  )
   const patchSettings = useCallback(
     (patch: Partial<RoomSettings>) => emit({ type: 'settings', patch }),
     [emit],
   )
 
-  return [{ ...state, connected }, { send, start, again, patchSettings, skip, hint }] as const
+  return [{ ...state, connected }, { send, start, again, patchSettings, skip, hint, stroke, canvas }] as const
 }

@@ -4,6 +4,7 @@ import { chosungGame } from '@retro/game-chosung'
 import { geuhaeGame } from '@retro/game-geuhae'
 import { assocGame } from '@retro/game-assoc'
 import { mulgaGame } from '@retro/game-mulga'
+import { sketchGame } from '@retro/game-sketch'
 
 /**
  * 게임 레지스트리 — 09 문서 §6
@@ -20,6 +21,7 @@ const GAMES: readonly RoomGame<never, never>[] = [
   geuhaeGame as unknown as RoomGame<never, never>,
   assocGame as unknown as RoomGame<never, never>,
   mulgaGame as unknown as RoomGame<never, never>,
+  sketchGame as unknown as RoomGame<never, never>,
 ]
 
 export const DEFAULT_GAME_ID: GameId = chosungGame.id
@@ -41,6 +43,7 @@ const TAGLINES: Readonly<Record<string, string>> = {
   geuhae: '힌트가 하나씩 열린다. 먼저 연도를 맞히면 이긴다',
   assoc: '한 명이 설명하고 나머지가 맞힌다. 매번 다른 판',
   mulga: '그때 그 가격을 맞힌다. 더 비싼지 싼지 알려준다',
+  sketch: '한 명이 그리고 나머지가 맞힌다. 못 그릴수록 재밌다',
 }
 
 const ICONS: Readonly<Record<string, string>> = {
@@ -48,6 +51,7 @@ const ICONS: Readonly<Record<string, string>> = {
   geuhae: 'calendar-clock',
   assoc: 'messages-square',
   mulga: 'coins',
+  sketch: 'pencil',
 }
 
 export function resolveGame(gameId: GameId): AnyGame {

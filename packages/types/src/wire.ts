@@ -1,5 +1,13 @@
 import type { PlayerId, TeamId } from './ids.ts'
 import type { Participant, RoomPhase, RoomSettings } from './room.ts'
+import {
+  isSketchColor,
+  isSketchWidth,
+  parseStrokePoints,
+  type SketchColor,
+  type SketchStroke,
+  type SketchWidth,
+} from './sketch.ts'
 
 /**
  * WebSocket 프로토콜.
@@ -27,6 +35,16 @@ export type ClientMessage =
   | { readonly type: 'skip' }
   /** 다음 힌트를 먼저 보자는 표. 과반이면 바로 열린다 */
   | { readonly type: 'hint' }
+  /** 스케치 — 한 획. 출제자만 보낼 수 있고 서버가 확인한다 */
+  | {
+      readonly type: 'stroke'
+      readonly color: SketchColor
+      readonly width: SketchWidth
+      readonly points: readonly { readonly x: number; readonly y: number }[]
+    }
+  /** 스케치 — 지우기 · 되돌리기 */
+  | { readonly type: 'canvas'; readonly action: 'clear' | 'undo' }
+
   | { readonly type: 'ping' }
 
 // ── 서버 → 클라이언트 ────────────────────────────────
@@ -89,6 +107,10 @@ export type ServerMessage =
       /** 나도 눌렀는가 */
       readonly you: boolean
     }
+  /** 스케치 — 새로 그어진 획 하나 */
+  | { readonly type: 'stroke'; readonly stroke: SketchStroke }
+  /** 스케치 — 캔버스 전체 상태. 늦게 들어온 사람에게 지금까지의 그림을 준다 */
+  | { readonly type: 'sketch'; readonly strokes: readonly SketchStroke[] }
   /** 힌트 표 현황. 과반이면 다음 힌트가 바로 열린다 */
   | {
       readonly type: 'hint'
@@ -160,6 +182,17 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       return { type: 'skip' }
     case 'hint':
       return { type: 'hint' }
+    case 'stroke': {
+      if (!isSketchColor(raw['color']) || !isSketchWidth(raw['width'])) return null
+      const points = parseStrokePoints(raw['points'])
+      if (points === null) return null
+      return { type: 'stroke', color: raw['color'], width: raw['width'], points }
+    }
+    case 'canvas': {
+      const action = raw['action']
+      if (action !== 'clear' && action !== 'undo') return null
+      return { type: 'canvas', action }
+    }
     case 'ping':
       return { type: 'ping' }
     default:

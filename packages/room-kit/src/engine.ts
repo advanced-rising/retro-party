@@ -10,6 +10,10 @@ import {
   type RoomState,
   type ServerErrorCode,
   type RoundRecord,
+  type SketchColor,
+  type SketchStroke,
+  type SketchWidth,
+  MAX_STROKES,
   type RoundSolver,
   type ServerMessage,
   type TeamId,
@@ -79,6 +83,13 @@ export interface JoinInput {
   readonly nowMs: number
 }
 
+export interface StrokeInput {
+  readonly playerId: PlayerId
+  readonly color: SketchColor
+  readonly width: SketchWidth
+  readonly points: readonly { readonly x: number; readonly y: number }[]
+}
+
 export interface ChatInput {
   readonly playerId: PlayerId
   readonly text: string
@@ -98,6 +109,10 @@ export interface Engine<Question, View> {
   skip(playerId: PlayerId, nowMs: number): readonly Effect[]
   /** 다음 힌트를 먼저 보자는 표 */
   hint(playerId: PlayerId, nowMs: number): readonly Effect[]
+  /** 스케치 한 획. 출제자가 아니면 무시된다 */
+  stroke(input: StrokeInput): readonly Effect[]
+  /** 스케치 지우기 · 되돌리기 */
+  canvas(playerId: PlayerId, action: 'clear' | 'undo'): readonly Effect[]
   /** 방 생성 시점에만 쓴다. 방장 검증도 로비 검증도 하지 않는다 */
   settingsUnchecked(patch: Partial<RoomSettings>): void
   /**
@@ -140,6 +155,12 @@ export function createEngine<Question, View>(
   let skipVotes = new Set<PlayerId>()
   /** 이번 라운드에 힌트를 앞당기자고 누른 사람 */
   let hintVotes = new Set<PlayerId>()
+  /**
+   * 스케치 획. **라운드가 끝나면 사라진다.**
+   * 채팅과 달리 메모리에 남기는 이유는 늦게 들어온 사람에게 지금까지
+   * 그린 그림을 보여줘야 하기 때문이다. storage 에는 절대 쓰지 않는다
+   */
+  let strokes: SketchStroke[] = []
 
   const rateLimiter: RateLimiter = createRateLimiter()
 
@@ -243,6 +264,7 @@ export function createEngine<Question, View>(
     solvers = []
     skipVotes = new Set()
     hintVotes = new Set()
+    strokes = []
 
     return [
       setPhase({ kind: 'playing', roundNo, endsAtMs: round.endsAtMs, roundMs: game.meta.roundMs }),
@@ -285,6 +307,9 @@ export function createEngine<Question, View>(
         message: { type: 'board', view: { revealed: revealed.answer, detail: revealed.detail } },
       },
       { kind: 'broadcast', message: { type: 'score', scores: scoreList() } },
+      // 라운드마다 보낸다. 무제한 판은 결과 화면이 오지 않으므로
+      // 여기서 안 보내면 기록을 영영 못 본다
+      { kind: 'broadcast', message: { type: 'history', rounds: history } },
       { kind: 'alarm', atMs: endsAtMs },
     ]
     question = null
@@ -472,6 +497,16 @@ export function createEngine<Question, View>(
         { kind: 'send', to: participant.playerId, message: snapshot(participant.playerId) },
         { kind: 'broadcast', message: { type: 'joined', participant } },
         ...boardsAt(nowMs),
+        // 그리는 중이었다면 지금까지의 그림을 그대로 넘겨준다
+        ...(strokes.length > 0
+          ? [
+              {
+                kind: 'send' as const,
+                to: participant.playerId,
+                message: { type: 'sketch' as const, strokes },
+              },
+            ]
+          : []),
       ]
     },
 
@@ -667,6 +702,32 @@ export function createEngine<Question, View>(
         setPhase({ ...phase, endsAtMs: phase.endsAtMs - shift }),
         ...boardsAt(nowMs),
         { kind: 'alarm', atMs: Math.min(nowMs + 1_000, phase.endsAtMs - shift) },
+      ]
+    },
+
+    /**
+     * 스케치 한 획.
+     *
+     * ★ **출제자만 그릴 수 있다.** 클라이언트에서 버튼을 숨기는 것으로는
+     * 부족하다 — 소켓으로 직접 보내면 그만이라 서버가 막아야 한다.
+     */
+    stroke({ playerId, color, width, points }): readonly Effect[] {
+      if (room.phase.kind !== 'playing' || round === null) return []
+      if (round.presenter !== playerId) return []
+      if (points.length === 0) return []
+
+      const stroke: SketchStroke = { by: playerId, color, width, points }
+      strokes = [...strokes, stroke].slice(-MAX_STROKES)
+      return [{ kind: 'broadcast', message: { type: 'stroke', stroke } }]
+    },
+
+    canvas(playerId, action): readonly Effect[] {
+      if (room.phase.kind !== 'playing' || round === null) return []
+      if (round.presenter !== playerId) return []
+
+      strokes = action === 'clear' ? [] : strokes.slice(0, -1)
+      return [
+        { kind: 'broadcast', message: { type: 'sketch', strokes } },
       ]
     },
 

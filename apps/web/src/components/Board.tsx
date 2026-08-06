@@ -2,12 +2,13 @@
 
 import { m } from 'motion/react'
 import { CircleCheck } from 'lucide-react'
-import type { RoomPhase } from '@retro/types'
+import type { RoomPhase, SketchStroke } from '@retro/types'
 import { isRevealBoard } from '@retro/room-kit/client-state'
 import { AssocBoard, isAssocView } from '@/components/boards/AssocBoard'
 import { ChosungBoard, isChosungView } from '@/components/boards/ChosungBoard'
 import { GeuhaeBoard, isGeuhaeView } from '@/components/boards/GeuhaeBoard'
 import { isMulgaView, MulgaBoard } from '@/components/boards/MulgaBoard'
+import { isSketchView, SketchBoard } from '@/components/boards/SketchBoard'
 import { Countdown } from '@/components/Countdown'
 import { ReportButton } from '@/components/ReportButton'
 
@@ -25,12 +26,22 @@ export function Board({
   presenterName,
   gameId,
   roomCode,
+  strokes,
+  onStroke,
+  onCanvas,
 }: {
   board: unknown
   phase: RoomPhase
   presenterName: string
   gameId: string
   roomCode: string
+  strokes: readonly SketchStroke[]
+  onStroke: (s: {
+    color: string
+    width: number
+    points: readonly { x: number; y: number }[]
+  }) => void
+  onCanvas: (action: 'clear' | 'undo') => void
 }) {
   if (phase.kind === 'lobby') {
     return (
@@ -108,6 +119,24 @@ export function Board({
       <Frame>
         <MulgaBoard view={board} />
         <Solved count={board.solvedCount} you={board.youSolved} />
+      </Frame>
+    )
+  }
+
+  if (isSketchView(board)) {
+    return (
+      <Frame>
+        <SketchBoard
+          view={board}
+          strokes={strokes}
+          presenterName={presenterName}
+          onStroke={onStroke}
+          onCanvas={onCanvas}
+        />
+        <Solved
+          count={board.solvedCount}
+          you={board.role === 'guesser' ? board.youSolved : false}
+        />
       </Frame>
     )
   }
