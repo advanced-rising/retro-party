@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useCallback, useEffect, useState, type FormEvent } from 'react'
+import { use, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Copy,
@@ -16,11 +16,14 @@ import {
 import { asPlayerId, ROOM_CAPACITY, type PlayerId } from '@retro/types'
 import { Board } from '@/components/Board'
 import { ChatPanel } from '@/components/ChatPanel'
+import { ConnectionBanner } from '@/components/ConnectionBanner'
 import { InAppBanner } from '@/components/InAppBanner'
 import { GameGuide } from '@/components/GameGuide'
 import { MatchHistory } from '@/components/MatchHistory'
 import { Podium } from '@/components/Podium'
 import { RoundBadge } from '@/components/RoundBadge'
+import { ShortcutHint } from '@/components/ShortcutHint'
+import { SoundToggle } from '@/components/SoundToggle'
 import { TeamBar } from '@/components/TeamBar'
 import { Roster } from '@/components/Roster'
 import { Timer } from '@/components/Timer'
@@ -29,6 +32,8 @@ import { gameIcon } from '@/lib/game-icon'
 import { LevelBadge } from '@/components/LevelBadge'
 import { API_BASE, addXp, loadIdentity, loadXp } from '@/lib/identity'
 import { useRoomSocket } from '@/lib/room-socket'
+import { useShortcuts, type Shortcut } from '@/lib/shortcuts'
+import { play } from '@/lib/sound'
 
 /**
  * 방 화면 — 06 문서 §6
@@ -208,6 +213,108 @@ function Room({
         }))
       : []
 
+  /**
+   * 단축키. 문자 키는 쓰지 않는다 — 채팅 입력창이 늘 포커스를 잡고 있어서
+   * 한글 조합이 깨진다 (lib/shortcuts.ts 참고).
+   */
+  const playing = view.phase.kind === 'playing'
+  const oxBoard =
+    typeof view.board === 'object' && view.board !== null && 'youAnswered' in view.board
+  const canAnswerOx =
+    oxBoard && (view.board as { youAnswered?: boolean }).youAnswered !== true
+
+  const shortcuts: readonly Shortcut[] = useMemo(
+    () => [
+      {
+        key: 'Escape',
+        run: () => (document.activeElement as HTMLElement | null)?.blur(),
+        label: '입력 해제',
+      },
+      {
+        key: 's',
+        alt: true,
+        when: playing && !view.skip.you,
+        run: actions.skip,
+        label: '넘기기',
+      },
+      {
+        key: 'h',
+        alt: true,
+        when: playing && view.hint.available && !view.hint.you,
+        run: actions.hint,
+        label: '힌트',
+      },
+      // OX 는 답이 둘뿐이라 방향키로 바로 낸다
+      {
+        key: 'ArrowLeft',
+        when: canAnswerOx,
+        run: () => actions.send('O', teamMode ? 'team' : 'all'),
+        label: 'O',
+      },
+      {
+        key: 'ArrowRight',
+        when: canAnswerOx,
+        run: () => actions.send('X', teamMode ? 'team' : 'all'),
+        label: 'X',
+      },
+      {
+        key: 'Enter',
+        alt: true,
+        when: view.phase.kind === 'lobby' && isHost && here >= needed,
+        run: actions.start,
+        label: '시작',
+      },
+      {
+        key: 'Enter',
+        alt: true,
+        when: view.phase.kind === 'result' && isHost,
+        run: actions.again,
+        label: '한 판 더',
+      },
+    ],
+    [
+      playing,
+      canAnswerOx,
+      teamMode,
+      isHost,
+      here,
+      needed,
+      view.phase.kind,
+      view.skip.you,
+      view.hint.available,
+      view.hint.you,
+      actions,
+    ],
+  )
+
+  useShortcuts(shortcuts)
+
+  /**
+   * 소리. 화면을 계속 볼 수 없는 게임이라 「지금 뭔가 일어났다」를
+   * 소리가 알려준다. 오답에는 넣지 않는다 — 자주 일어나는 일에 소리를 달면
+   * 음소거를 누르게 되고, 그러면 중요한 소리도 같이 죽는다.
+   */
+  const phaseKind = view.phase.kind
+  useEffect(() => {
+    if (phaseKind === 'playing') play('start')
+    if (phaseKind === 'reveal') play('reveal')
+  }, [phaseKind])
+
+  useEffect(() => {
+    if (myCorrects > 0) play('correct')
+  }, [myCorrects])
+
+  // 마지막 5초 초읽기
+  const endsAtMs = view.phase.kind === 'playing' ? view.phase.endsAtMs : null
+  useEffect(() => {
+    if (endsAtMs === null) return
+    const timers = [5, 4, 3, 2, 1]
+      .map((left) => endsAtMs - left * 1_000 - Date.now())
+      .filter((delay) => delay > 0)
+      .map((delay) => setTimeout(() => play('tick'), delay))
+    return () => timers.forEach(clearTimeout)
+  }, [endsAtMs])
+
   return (
     /**
      * 모바일은 한 칸, PC 는 두 칸.
@@ -218,6 +325,7 @@ function Room({
      */
     <main className="mx-auto flex h-dvh w-full max-w-lg flex-col px-4 pb-2 pt-3 lg:max-w-6xl lg:px-6">
       <InAppBanner />
+      <ConnectionBanner connected={view.connected} retries={view.retries} />
 
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <button
@@ -279,6 +387,8 @@ function Room({
             <span className="tnum">{view.history.length}</span>
           </button>
         )}
+
+        <SoundToggle />
 
         {/* 나가기. 소켓이 닫히면 서버가 알아서 정리한다 (engine.leave) */}
         <button
@@ -470,6 +580,8 @@ function Room({
               presenter={presenterId}
             />
           </div>
+
+          <ShortcutHint shortcuts={shortcuts} />
 
           <ChatPanel
             lines={view.lines}

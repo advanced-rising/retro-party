@@ -17,6 +17,8 @@ import {
 
 export interface RoomView extends ClientState {
   readonly connected: boolean
+  /** 끊긴 뒤 다시 붙기를 몇 번 시도했는가. 0 이면 정상 */
+  readonly retries: number
 }
 
 export interface RoomActions {
@@ -52,6 +54,7 @@ export function useRoomSocket(
 ): readonly [RoomView, RoomActions] {
   const socketRef = useRef<WebSocket | null>(null)
   const [connected, setConnected] = useState(false)
+  const [retries, setRetries] = useState(0)
   const [state, setState] = useState<ClientState>(initialClientState)
 
   useEffect(() => {
@@ -69,11 +72,15 @@ export function useRoomSocket(
       const socket = new WebSocket(url)
       socketRef.current = socket
 
-      socket.addEventListener('open', () => setConnected(true))
+      socket.addEventListener('open', () => {
+        setConnected(true)
+        setRetries(0)
+      })
 
       socket.addEventListener('close', () => {
         setConnected(false)
         if (closedByUs) return
+        setRetries((n) => n + 1)
         retryTimer = setTimeout(open, RETRY_MS)
       })
 
@@ -127,5 +134,8 @@ export function useRoomSocket(
     [emit],
   )
 
-  return [{ ...state, connected }, { send, start, again, patchSettings, skip, hint, stroke, canvas }] as const
+  return [
+    { ...state, connected, retries },
+    { send, start, again, patchSettings, skip, hint, stroke, canvas },
+  ] as const
 }
