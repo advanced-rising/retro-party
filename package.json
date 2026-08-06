@@ -10,7 +10,8 @@
     "contrast": "node --experimental-strip-types tools/contrast.ts",
     "typecheck": "tsc --build",
     "typecheck:clean": "tsc --build --clean && tsc --build",
-    "test": "node --experimental-strip-types --test 'packages/**/src/*.test.ts'"
+    "test": "node --experimental-strip-types --test 'packages/**/src/*.test.ts'",
+    "smoke": "node --experimental-strip-types tools/smoke.ts"
   },
   "devDependencies": {
     "@types/node": "22",

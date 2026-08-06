@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "lib": ["ES2023"],
+    "types": ["@cloudflare/workers-types"],
+    "paths": {
+      "@retro/types": ["../../packages/types/src/index.ts"],
+      "@retro/room-kit": ["../../packages/room-kit/src/index.ts"],
+      "@retro/game-chosung": ["../../packages/games/chosung/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "worker-env.d.ts"],
+  "references": [
+    { "path": "../../packages/types" },
+    { "path": "../../packages/room-kit" },
+    { "path": "../../packages/games/chosung" }
+  ]
+}

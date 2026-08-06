@@ -1,0 +1,17 @@
+name = "retro-party-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# 방 하나 = DO 인스턴스 하나. 05 문서 §3
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+# SQLite 백엔드 DO. 무료 플랜에서도 쓸 수 있다
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDO"]
+
+[observability]
+enabled = true

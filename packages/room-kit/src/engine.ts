@@ -362,6 +362,9 @@ export function createEngine<Question, View>(
       room = { ...room, participants: [...room.participants, participant], scores }
       seatOrder = [...seatOrder, participant.playerId]
 
+      // 방장이 없거나 이미 나간 방이면 이 사람이 방장이 된다
+      if (find(room.hostId) === undefined) room = { ...room, hostId: participant.playerId }
+
       return [
         { kind: 'send', to: participant.playerId, message: snapshot(participant.playerId) },
         { kind: 'broadcast', message: { type: 'joined', participant } },

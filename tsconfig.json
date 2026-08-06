@@ -11,6 +11,9 @@
       "path": "./packages/games/chosung"
     },
     {
+      "path": "./apps/api"
+    },
+    {
       "path": "./tools"
     }
   ]
