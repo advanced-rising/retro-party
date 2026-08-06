@@ -61,6 +61,7 @@ export type ServerErrorCode =
   | 'blocked_word'
   | 'invalid_message'
   | 'game_in_progress'
+  | 'not_enough_players'
 
 // ── 파서 ─────────────────────────────────────────────
 

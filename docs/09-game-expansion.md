@@ -171,7 +171,6 @@
 packages/games/{gameId}/
 ├─ index.ts        RoomGame 구현 (createRound / judge / reveal / viewFor)
 ├─ Board.tsx       문제 영역 컴포넌트
-├─ ai.ts           AI 참가자 행동 계획
 └─ schema.ts       문제 타입
 
 apps/web/lib/registry.ts    한 줄 추가
@@ -186,7 +185,6 @@ DB 마이그레이션 **없음** — 게임별 데이터는 `match_players` 집�
 - 타이머 · 라운드 진행 · 점수판
 - 결과 화면 · 하이라이트 · 공유 카드
 - 재접속 · 관전
-- AI 참가자 투입 (행동 계획만 게임별로 작성)
 
 ### 6.3 체크리스트
 
@@ -196,7 +194,6 @@ DB 마이그레이션 **없음** — 게임별 데이터는 `match_players` 집�
 - [ ] 콘텐츠 라이선스가 깨끗한가
 - [ ] 기존 게임과 리듬이 다른가
 - [ ] 최소 인원이 3 이하인가
-- [ ] AI 참가자 행동 계획이 구현됐는가
 - [ ] 초기 콘텐츠 물량 + 보강 계획이 있는가
 
 ### 6.4 목표

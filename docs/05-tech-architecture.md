@@ -34,7 +34,7 @@
 │  │  RoomDO      방 하나 = 인스턴스 하나                       ││
 │  │              · WebSocket 연결 (참가자 + 관전자)            ││
 │  │              · 방 상태 · 라운드 진행 · 채팅 릴레이          ││
-│  │              · 타이머 · AI 참가자 시뮬레이션                ││
+│  │              · 타이머 · 라운드 알람                        ││
 │  │                                                            ││
 │  │  LobbyDO     방 목록 집계 · 빠른 입장 배정 (게임별 1개)     ││
 │  │  DailyDO     데일리 싱글 통계 집계                          ││
@@ -159,26 +159,17 @@ private broadcastView() {
 
 **정답이 클라이언트로 새는 경로를 하나로 좁힌다.** `viewFor`만 검증하면 된다. 테스트 필수 (§9).
 
-### 3.4 AI 참가자 구현
+### 3.4 참가자는 전부 실제 소켓이다
 
-AI는 **가짜 WebSocket 클라이언트가 아니다.** DO 안에서 타이머로 동작한다.
+**DO 안에서 참가자를 만들어내지 않는다.** 참가자 목록의 모든 항목은 실제 WebSocket 연결과 1:1로 대응한다. 봇·AI·더미를 시뮬레이션하는 코드 경로는 존재하지 않는다.
 
-```ts
-private scheduleAiForRound(q: Question) {
-  for (const ai of this.room.aiPlayers) {
-    const plan = planAiBehavior(ai.persona, q, this.humanCount(), this.seed)
-    // plan = [{ atMs: 4200, kind: 'chat', text: '음...' },
-    //         { atMs: 9800, kind: 'answer', text: '1997' }]
-    for (const step of plan) this.timers.at(step.atMs, () => this.runAi(ai, step))
-  }
-}
-```
+이것이 서버 구조를 단순하게 만든다.
 
-- 라운드 시작 시 **행동 계획을 통째로 결정**해둔다. 시드 기반이라 재현 가능
-- `planAiBehavior`는 **순수 함수**. 03 문서의 실력 조절(사람 수에 따라 하향)이 여기 들어간다
-- 채팅 문구는 **사전 생성 풀**에서 뽑는다. **런타임 LLM 호출 없음**
+- 참가자 = 소켓. `getWebSockets()` 와 `room.participants` 가 항상 일치한다
+- 타이머가 하는 일은 **라운드 진행뿐** — 카운트다운, 라운드 종료, 공개 종료
+- 방에 사람이 없으면 방이 없는 것이다. 알람도 걸지 않고 그대로 정리된다
 
-DO가 단일 스레드라 AI 행동과 사람 입력이 자연스럽게 직렬화된다. 경합이 없다.
+콜드스타트는 서버에서 인원을 만들어 푸는 게 아니라, 사람을 같은 방으로 몰아서 푼다 (03 문서 §4).
 
 ### 3.5 Hibernation
 
@@ -228,7 +219,7 @@ KV에는 **게임별 문제 풀 인덱스**를 넣어둔다. Cron이 매일 갱�
 ```
 KV: content:geuhae:v42     → 연도별 힌트 세트
     content:chosung:v18    → 초성 문제 세트
-    content:assoc:v9       → 단어 목록 + AI 설명 스크립트
+    content:assoc:v9       → 단어 목록 + 연습 모드 스크립트
 ```
 
 **문제 세트가 KV 값 하나에 다 들어가지 않으면** 연도/카테고리별로 쪼개고, 방 생성 시 필요한 것만 병렬로 읽는다.
@@ -365,7 +356,7 @@ geuttae/
 | `game:view-leak` | `viewFor` 결과에 정답이 없는가 (출제자 제외) | ● 최우선 |
 | `room:team-chat-isolation` | 팀 채널 메시지가 상대 팀 소켓에 안 가는가 | ● 최우선 |
 | `room:chat-not-stored` | 채팅 100건 후 DO storage 미증가 | ● |
-| `ai:determinism` | 같은 시드 → 같은 AI 행동 계획 | |
+| `room:no-synthetic-players` | 참가자 수와 열린 소켓 수가 항상 같은가 | ● |
 | `room:reconnect` | 60초 내 재접속 시 상태 복원 | |
 | `game:judge` | 정답 정규화 (`97`, `1997년`, 공백) | |
 

@@ -1,8 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/types" },
-    { "path": "./packages/room-kit" },
-    { "path": "./tools" }
+    {
+      "path": "./packages/types"
+    },
+    {
+      "path": "./packages/room-kit"
+    },
+    {
+      "path": "./packages/games/chosung"
+    },
+    {
+      "path": "./tools"
+    }
   ]
 }

@@ -45,7 +45,9 @@ export function teamTotals(
 
 /**
  * 경험치 — 10 문서 §1.2
- * AI 비율이 높은 판은 절반으로 깎는다 (파밍 방어, 10 문서 §6)
+ *
+ * 파밍 방어(10 문서 §6): 참가자가 전부 사람이므로 봇 파밍은 불가능하지만,
+ * 둘이서 방을 잠그고 반복하는 경로는 남는다. 소인원 판은 절반으로 깎는다.
  */
 export interface XpInput {
   readonly finished: boolean
@@ -53,10 +55,11 @@ export interface XpInput {
   readonly correctCount: number
   readonly assistCount: number
   readonly isFirstGameToday: boolean
-  readonly aiRatio: number
+  /** 이 판에 실제로 참여한 사람 수 */
+  readonly playerCount: number
 }
 
-const AI_HEAVY_THRESHOLD = 0.5
+const SMALL_ROOM_THRESHOLD = 3
 
 export function matchXp(input: XpInput): number {
   if (!input.finished) return 0
@@ -69,5 +72,5 @@ export function matchXp(input: XpInput): number {
     input.assistCount * 10 +
     (input.isFirstGameToday ? 200 : 0)
 
-  return input.aiRatio > AI_HEAVY_THRESHOLD ? Math.round(raw * 0.5) : raw
+  return input.playerCount < SMALL_ROOM_THRESHOLD ? Math.round(raw * 0.5) : raw
 }

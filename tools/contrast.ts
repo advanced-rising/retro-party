@@ -102,7 +102,7 @@ const CHECKS: readonly Check[] = [
   { label: '홍팀 텍스트', fg: 'red', bg: 'bg-elevated', min: 4.5 },
   { label: '시간부족 텍스트', fg: 'amber', bg: 'bg-elevated', min: 4.5 },
   { label: '1등 금색', fg: 'gold', bg: 'bg-elevated', min: 4.5 },
-  { label: 'AI 보라', fg: 'purple', bg: 'bg-elevated', min: 4.5 },
+  { label: '출제자 보라', fg: 'purple', bg: 'bg-elevated', min: 4.5 },
   { label: '아바타 이니셜', fg: 'avatar-fg', bg: 'avatar-bg', min: 4.5 },
 ]
 

@@ -68,6 +68,8 @@ export interface RoundState {
   /** 이미 맞힌 참가자. 순서가 곧 순위 */
   readonly solved: readonly PlayerId[]
   readonly presenter: PlayerId | null
+  /** 맞힐 수 있는 참가자 수 (출제자 제외). 전원 정답 시 조기 종료 판정에 쓴다 */
+  readonly expectedSolvers: number
 }
 
 export interface RevealData {
@@ -84,12 +86,21 @@ export interface ViewInput<Question> {
   readonly nowMs: number
 }
 
-export function emptyRound(roundNo: number, startedAtMs: number, roundMs: number): RoundState {
+export interface EmptyRoundInput {
+  readonly roundNo: number
+  readonly startedAtMs: number
+  readonly roundMs: number
+  readonly expectedSolvers: number
+  readonly presenter: PlayerId | null
+}
+
+export function emptyRound(input: EmptyRoundInput): RoundState {
   return {
-    roundNo,
-    startedAtMs,
-    endsAtMs: startedAtMs + roundMs,
+    roundNo: input.roundNo,
+    startedAtMs: input.startedAtMs,
+    endsAtMs: input.startedAtMs + input.roundMs,
     solved: [],
-    presenter: null,
+    presenter: input.presenter,
+    expectedSolvers: input.expectedSolvers,
   }
 }
