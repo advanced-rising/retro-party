@@ -124,14 +124,28 @@ async function gateCapacity(): Promise<Client[]> {
     `${elapsed.toFixed(0)}ms`,
   )
 
-  const last = clients[CAPACITY - 1]
-  const snapshot = last === undefined ? undefined : seen(last, 'snapshot')[0]
-  const participants = (snapshot?.['participants'] ?? []) as unknown[]
-  check(participants.length === CAPACITY, '스냅샷에 8명이 다 보인다', `${participants.length}명`)
-
-  const first = clients[0]
-  const joined = first === undefined ? 0 : seen(first, 'joined').length
-  check(joined >= CAPACITY - 1, '먼저 들어온 사람이 나머지 입장을 다 받았다', `joined ${joined}`)
+  // 동시에 붙으면 첫 스냅샷은 부분적일 수 있다. 뒤따르는 joined 로 따라잡는
+  // 것이 정상 동작이므로, 순간이 아니라 수렴한 결과를 본다 (client-state 리듀서와 같은 접기)
+  const rosterSizes = clients.map((client) => {
+    const ids = new Set<string>()
+    for (const message of client.inbox) {
+      if (message['type'] === 'snapshot') {
+        for (const p of (message['participants'] ?? []) as { playerId?: string }[]) {
+          if (typeof p.playerId === 'string') ids.add(p.playerId)
+        }
+      }
+      if (message['type'] === 'joined') {
+        const p = message['participant'] as { playerId?: string } | undefined
+        if (typeof p?.playerId === 'string') ids.add(p.playerId)
+      }
+    }
+    return ids.size
+  })
+  check(
+    rosterSizes.every((n) => n === CAPACITY),
+    '모두의 화면이 8명으로 수렴한다',
+    rosterSizes.join('·'),
+  )
 
   // 9번째는 거절돼야 한다
   const extra = await connect(code, 'p8', '아홉번째')
