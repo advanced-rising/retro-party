@@ -16,7 +16,9 @@
     "@retro/game-oxquiz": "workspace:*",
     "@retro/game-kkungtta": "workspace:*",
     "@retro/game-baseball": "workspace:*",
-    "@retro/game-relay": "workspace:*"
+    "@retro/game-relay": "workspace:*",
+    "@retro/db": "workspace:*",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",

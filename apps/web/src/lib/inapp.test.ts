@@ -96,6 +96,15 @@ test('안드로이드 인앱은 intent 로 크롬을 띄운다', () => {
   assert.ok(!plan.url.includes('intent://https://'), '스킴을 두 번 넣으면 안 된다')
 })
 
+test('★ 안드로이드에 폴백이 붙는다 — 크롬이 없는 기기가 있다', () => {
+  const plan = planEscape(UA.androidWebview, TARGET)
+  if (plan.kind !== 'auto') throw new Error('auto 여야 한다')
+  assert.ok(
+    plan.url.includes(`S.browser_fallback_url=${encodeURIComponent(TARGET)}`),
+    '폴백이 없으면 크롬 없는 기기에서 아무 일도 안 일어난다',
+  )
+})
+
 test('iOS 인앱은 자동으로 못 나간다 — 안내만 한다', () => {
   for (const ua of [UA.instagramIos, UA.lineIos, UA.naverIos]) {
     const plan = planEscape(ua, TARGET)

@@ -46,6 +46,9 @@
       ],
       "@retro/game-relay": [
         "../../packages/games/relay/src/index.ts"
+      ],
+      "@retro/db": [
+        "../../packages/db/src/index.ts"
       ]
     }
   },
@@ -89,6 +92,9 @@
     },
     {
       "path": "../../packages/games/relay"
+    },
+    {
+      "path": "../../packages/db"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { DurableObject } from 'cloudflare:workers'
 import {
   asPlayerId,
   asRoomId,
@@ -61,20 +62,30 @@ interface PersistedRoom {
   readonly locked: boolean
 }
 
+export interface RoomStateSummary {
+  readonly code: string
+  readonly title: string
+  readonly phase: string
+  readonly players: number
+  readonly capacity: number
+  readonly gameId: string
+  readonly mode: string
+  readonly locked: boolean
+}
+
+export type CreateResult =
+  | { readonly ok: true; readonly code: string; readonly title: string; readonly gameId: string; readonly locked: boolean }
+  | { readonly ok: false; readonly error: string }
+
 const STORAGE_KEY = 'room'
 /** 비밀번호 해시는 방 상태와 분리된 키에 둔다. 실수로 브로드캐스트되지 않게 */
 const AUTH_KEY = 'auth'
 const TICKET_KEY = 'tickets'
 
-export class RoomDO implements DurableObject {
+export class RoomDO extends DurableObject<Env> {
   private engine: Engine<unknown, unknown> | null = null
   private game: AnyGame = resolveGame(DEFAULT_GAME_ID)
   private booted = false
-
-  constructor(
-    private readonly ctx: DurableObjectState,
-    private readonly env: Env,
-  ) {}
 
   // ── 부팅 ───────────────────────────────────────────
 
@@ -146,34 +157,35 @@ export class RoomDO implements DurableObject {
 
   // ── HTTP ───────────────────────────────────────────
 
-  async fetch(request: Request): Promise<Response> {
+  /**
+   * 방 상태 — RPC.
+   *
+   * 예전에는 `/state` 경로를 fetch 로 불렀다. 메서드로 부르면 반환 타입이
+   * 경계를 넘어서도 살아 있어서, 필드 이름을 바꿔도 호출부가 컴파일에서 잡힌다.
+   */
+  async state(code: string): Promise<RoomStateSummary> {
+    const engine = await this.boot(code)
+    const { room } = engine.state
+    return {
+      code: room.code,
+      title: room.settings.title,
+      phase: room.phase.kind,
+      players: room.participants.filter((p) => p.connected).length,
+      capacity: ROOM_CAPACITY,
+      gameId: room.settings.gameId,
+      mode: room.settings.mode,
+      locked: room.locked,
+    }
+  }
+
+  /**
+   * WebSocket 업그레이드만 fetch 로 남는다.
+   *
+   * 소켓 업그레이드는 RPC 로 못 한다 — 반환값이 값이 아니라 **연결**이라서
+   * 구조화 복제로 옮길 수 있는 종류가 아니다. 이건 fetch 의 몫이다.
+   */
+  override async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
-
-    // 방 생성 — 제목·게임·비밀번호를 여기서 정한다
-    if (url.pathname.endsWith('/create') && request.method === 'POST') {
-      return this.create(request, url.searchParams.get('code') ?? '')
-    }
-
-    // 비밀번호를 확인하고 짧게 사는 티켓을 내준다.
-    // 비밀번호가 쿼리스트링에 실리지 않게 하는 유일한 방법이다
-    if (url.pathname.endsWith('/ticket') && request.method === 'POST') {
-      return this.issueTicket(request, url.searchParams.get('code') ?? '')
-    }
-
-    if (url.pathname.endsWith('/state')) {
-      const engine = await this.boot(url.searchParams.get('code') ?? '')
-      const { room } = engine.state
-      return Response.json({
-        code: room.code,
-        title: room.settings.title,
-        phase: room.phase.kind,
-        players: room.participants.filter((p) => p.connected).length,
-        capacity: ROOM_CAPACITY,
-        gameId: room.settings.gameId,
-        mode: room.settings.mode,
-        locked: room.locked,
-      })
-    }
 
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 })
@@ -217,15 +229,12 @@ export class RoomDO implements DurableObject {
     return new Response(null, { status: 101, webSocket: client })
   }
 
-  /** 방을 만든다. 이미 만들어진 방이면 아무것도 하지 않는다 */
-  private async create(request: Request, code: string): Promise<Response> {
+  /** 방을 만든다 — RPC. 이미 쓰는 방이면 만들지 않는다 */
+  async create(code: string, input: Record<string, unknown>): Promise<CreateResult> {
     const engine = await this.boot(code)
     if (engine.state.room.participants.length > 0) {
-      return Response.json({ error: '이미 사용 중인 방입니다' }, { status: 409 })
+      return { ok: false, error: '이미 사용 중인 방입니다' }
     }
-
-    const body: unknown = await request.json().catch(() => null)
-    const input = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
 
     const rawTitle = typeof input['title'] === 'string' ? input['title'] : ''
     const title = normalizeRoomTitle(rawTitle) ?? '새 방'
@@ -251,7 +260,7 @@ export class RoomDO implements DurableObject {
     //   설정만 바꾸면 고른 게임이 아니라 기본 게임이 계속 돈다. 반드시 다시 만든다
     await this.rebuildEngine()
     await this.reportToLobby()
-    return Response.json({ code: engine.state.room.code, title, gameId, locked: password !== null })
+    return { ok: true, code, title, gameId, locked: password !== null }
   }
 
   /**
@@ -267,19 +276,15 @@ export class RoomDO implements DurableObject {
     await this.boot('')
   }
 
-  private async issueTicket(request: Request, code: string): Promise<Response> {
+  /** 비밀번호를 확인하고 1회용 티켓을 내준다 — RPC */
+  async issueTicket(code: string, password: unknown): Promise<string | null> {
     const engine = await this.boot(code)
-    if (!engine.state.room.locked) return Response.json({ ticket: null })
+    if (!engine.state.room.locked) return null
 
-    const body: unknown = await request.json().catch(() => null)
-    const attempt = normalizePassword(
-      typeof body === 'object' && body !== null
-        ? (body as Record<string, unknown>)['password']
-        : null,
-    )
+    const attempt = normalizePassword(password)
     const stored = await this.ctx.storage.get<PasswordHash>(AUTH_KEY)
     if (attempt === null || stored === undefined || !(await verifyPassword(stored, attempt))) {
-      return Response.json({ error: '비밀번호가 다릅니다' }, { status: 403 })
+      return null
     }
 
     const nowMs = Date.now()
@@ -289,7 +294,7 @@ export class RoomDO implements DurableObject {
     tickets.set(ticket, nowMs + TICKET_TTL_MS)
     await this.ctx.storage.put(TICKET_KEY, [...tickets])
 
-    return Response.json({ ticket })
+    return ticket
   }
 
   /** 티켓은 한 번 쓰면 버린다 */
@@ -322,11 +327,8 @@ export class RoomDO implements DurableObject {
       locked: room.locked,
     }
     try {
-      const stub = this.env.LOBBY.get(this.env.LOBBY.idFromName('global'))
-      await stub.fetch('https://lobby/report', {
-        method: 'POST',
-        body: JSON.stringify(summary),
-      })
+      // RPC — 경로도 JSON 도 없다. 메서드를 그냥 부른다
+      await this.env.LOBBY.get(this.env.LOBBY.idFromName('global')).report(summary)
     } catch {
       // 목록이 잠깐 낡는 것은 감수한다. 방이 멈추면 안 된다
     }
@@ -334,7 +336,7 @@ export class RoomDO implements DurableObject {
 
   // ── WebSocket ──────────────────────────────────────
 
-  async webSocketMessage(ws: WebSocket, raw: ArrayBuffer | string): Promise<void> {
+  override async webSocketMessage(ws: WebSocket, raw: ArrayBuffer | string): Promise<void> {
     if (typeof raw !== 'string') return
     const attachment = this.attachmentOf(ws)
     if (attachment === null) return
@@ -412,17 +414,17 @@ export class RoomDO implements DurableObject {
     }
   }
 
-  async webSocketClose(ws: WebSocket): Promise<void> {
+  override async webSocketClose(ws: WebSocket): Promise<void> {
     const attachment = this.attachmentOf(ws)
     if (attachment === null || this.engine === null) return
     await this.dispatch(this.engine.leave(asPlayerId(attachment.playerId), Date.now()))
   }
 
-  async webSocketError(ws: WebSocket): Promise<void> {
+  override async webSocketError(ws: WebSocket): Promise<void> {
     await this.webSocketClose(ws)
   }
 
-  async alarm(): Promise<void> {
+  override async alarm(): Promise<void> {
     const engine = this.engine
     if (engine === null) return
     await this.dispatch(engine.tick(Date.now()))

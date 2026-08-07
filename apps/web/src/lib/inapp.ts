@@ -10,8 +10,9 @@
  *   3. 키보드가 올라올 때 뷰포트가 안 줄어든다 → 채팅 입력창이 가려진다.
  *      채팅이 정답 입력인 게임에서 이건 치명적이다
  *
- * 그래서 인앱이면 바깥 브라우저로 튕겨낸다. 튕겨낼 수 없는 조합(iOS + 인스타 등)은
- * 안내만 한다 — 자동으로 되는 척하면 안 된다.
+ * 그래서 인앱이면 바깥 브라우저로 튕겨낸다. **가능한 조합은 자동으로 넘긴다** —
+ * 버튼을 하나 더 누르게 하면 그 자리에서 절반이 빠져나간다.
+ * 튕겨낼 수 없는 조합(iOS + 인스타 등)은 안내만 한다. 되는 척하면 안 된다.
  *
  * UA 문자열은 조용히 바뀌므로 이 파일은 순수 함수로만 두고 테스트한다.
  */
@@ -105,16 +106,45 @@ export function planEscape(ua: string, targetUrl: string): EscapePlan {
 
   const platform = detectPlatform(ua)
 
-  // 안드로이드는 intent 스킴으로 크롬을 직접 띄울 수 있다
+  /*
+   * 안드로이드는 intent 스킴으로 크롬을 직접 띄운다.
+   *
+   * `S.browser_fallback_url` 을 반드시 붙인다 — 크롬이 없는 기기에서
+   * 이게 없으면 아무 일도 안 일어나고 사용자는 왜 안 되는지 모른다.
+   * 폴백이 있으면 최소한 원래 페이지로 돌아온다.
+   */
   if (platform === 'android') {
     const stripped = targetUrl.replace(/^https?:\/\//, '')
+    const fallback = encodeURIComponent(targetUrl)
     return {
       kind: 'auto',
       app,
-      url: `intent://${stripped}#Intent;scheme=https;package=com.android.chrome;end`,
+      url:
+        `intent://${stripped}#Intent;scheme=https;package=com.android.chrome;` +
+        `S.browser_fallback_url=${fallback};end`,
     }
   }
 
   // iOS 는 앱이 막으면 방법이 없다. 안내만 한다
   return { kind: 'guide', app, hint: IOS_HINTS[app] ?? DEFAULT_IOS_HINT }
+}
+
+
+/** 자동 탈출을 한 번 시도했는지 기억한다. 무한히 다시 시도하면 안 된다 */
+const TRIED_KEY = 'retro:inapp-escaped'
+
+export function alreadyTriedEscape(): boolean {
+  try {
+    return sessionStorage.getItem(TRIED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function markEscapeTried(): void {
+  try {
+    sessionStorage.setItem(TRIED_KEY, '1')
+  } catch {
+    // 시크릿 모드 등에서 막힐 수 있다. 못 기억해도 배너는 남으니 괜찮다
+  }
 }

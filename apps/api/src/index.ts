@@ -1,4 +1,6 @@
 import { parseRoomCode, ROOM_CAPACITY, type RoomCode } from '@retro/types'
+import { readProgress, recordReport } from '@retro/db'
+import { connect } from './db.ts'
 import { listGames } from './registry.ts'
 import { buildEmbed, parseReport, sendToDiscord } from './report.ts'
 
@@ -32,10 +34,17 @@ const cors = {
 const json = (body: unknown, status = 200): Response =>
   Response.json(body, { status, headers: cors })
 
-const lobbyOf = (env: Env): DurableObjectStub =>
+/**
+ * DO 는 **RPC 로 부른다.**
+ *
+ * 예전에는 `stub.fetch('https://lobby/list')` 였다. 경로를 오타 내도
+ * 컴파일이 통과하고, 인자와 반환을 매번 JSON 으로 싸고 풀어야 했다.
+ * 스텁에 타입 인자를 주면 메서드가 그대로 보이고 반환 타입이 살아 있다.
+ */
+const lobbyOf = (env: Env) =>
   env.LOBBY.get(env.LOBBY.idFromName('global'), { locationHint: 'apac' })
 
-const roomOf = (env: Env, code: RoomCode): DurableObjectStub =>
+const roomOf = (env: Env, code: RoomCode) =>
   env.ROOM.get(env.ROOM.idFromName(code), { locationHint: 'apac' })
 
 export default {
@@ -54,9 +63,9 @@ export default {
       const report = parseReport(await request.json().catch(() => null))
       if (report === null) return json({ error: '신고 내용이 올바르지 않습니다' }, 400)
 
-      const quota = await lobbyOf(env).fetch('https://lobby/report-quota', { method: 'POST' })
-      const allowed = ((await quota.json()) as { allowed?: boolean }).allowed === true
-      if (!allowed) return json({ error: '신고가 너무 잦습니다. 잠시 후 다시 시도해 주세요' }, 429)
+      if (!(await lobbyOf(env).takeReportQuota())) {
+        return json({ error: '신고가 너무 잦습니다. 잠시 후 다시 시도해 주세요' }, 429)
+      }
 
       const webhook = env.DISCORD_WEBHOOK_URL
       if (webhook === undefined || webhook.length === 0) {
@@ -64,32 +73,39 @@ export default {
       }
 
       const sent = await sendToDiscord(webhook, buildEmbed(report, new Date().toISOString()))
+      // Discord 는 알림이고 DB 는 목록이다. 둘 다 남긴다
+      await recordReport(connect(env), report)
       return sent ? json({ ok: true }) : json({ error: '신고를 보내지 못했습니다' }, 502)
     }
 
     // 방 목록 — 사람 수 내림차순, 빈 방은 안 나온다 (03 문서 §4.2)
     if (url.pathname === '/api/rooms' && request.method === 'GET') {
-      const response = await lobbyOf(env).fetch('https://lobby/list')
-      return json(await response.json())
+      return json({ rooms: await lobbyOf(env).list() })
     }
 
     // [바로 참가] — 가장 사람 많고 자리가 남은 공개 방. 없으면 null
     if (url.pathname === '/api/rooms/quick' && request.method === 'POST') {
-      const response = await lobbyOf(env).fetch('https://lobby/quick')
-      return json(await response.json())
+      return json({ code: await lobbyOf(env).quickJoin() })
+    }
+
+    // 내 진행 상황 — 레벨과 경험치. DB 가 없으면 1레벨로 떨어진다
+    if (url.pathname === '/api/me' && request.method === 'GET') {
+      const deviceId = url.searchParams.get('deviceId') ?? ''
+      return json({ progress: await readProgress(connect(env), deviceId) })
     }
 
     // 방 만들기
     if (url.pathname === '/api/rooms' && request.method === 'POST') {
       const code = newRoomCode()
-      const body = await request.text()
-      const created = await roomOf(env, code).fetch(
-        `https://room/create?code=${code}`,
-        { method: 'POST', body },
-      )
-      if (!created.ok) return json({ error: '방을 만들지 못했습니다' }, 500)
-      const detail = (await created.json()) as Record<string, unknown>
-      return json({ ...detail, code, capacity: ROOM_CAPACITY })
+      const body: unknown = await request.json().catch(() => ({}))
+      const input = (typeof body === 'object' && body !== null ? body : {}) as Record<
+        string,
+        unknown
+      >
+
+      const created = await roomOf(env, code).create(code, input)
+      if (!created.ok) return json({ error: created.error }, 409)
+      return json({ ...created, capacity: ROOM_CAPACITY })
     }
 
     // /api/rooms/:code/(ws|state|ticket)
@@ -98,11 +114,27 @@ export default {
       const code = parseRoomCode((match[1] ?? '').toUpperCase())
       const tail = match[2] ?? ''
       if (code === null) return json({ error: '방 코드 형식이 아닙니다' }, 400)
+      const room = roomOf(env, code)
 
+      if (tail === 'state') return json(await room.state(code))
+
+      if (tail === 'ticket') {
+        const body: unknown = await request.json().catch(() => null)
+        const password =
+          typeof body === 'object' && body !== null
+            ? (body as Record<string, unknown>)['password']
+            : null
+        const ticket = await room.issueTicket(code, password)
+        return ticket === null
+          ? json({ error: '비밀번호가 다릅니다' }, 403)
+          : json({ ticket })
+      }
+
+      // WebSocket 업그레이드만 fetch 로 넘긴다 — 연결은 RPC 로 못 옮긴다
       const forward = new URL(request.url)
       forward.searchParams.set('code', code)
-      forward.pathname = `/${tail}`
-      return roomOf(env, code).fetch(new Request(forward, request))
+      forward.pathname = '/ws'
+      return room.fetch(new Request(forward, request))
     }
 
     return json({ error: 'not found' }, 404)
